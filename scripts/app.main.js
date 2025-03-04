@@ -415,7 +415,7 @@ function processNext(files, scannedFiles=[], n=0) {
 		return;
 	}
 	if (State.pause) {
-		setTimeout(processNext, 1000, files, scannedFiles);
+		setTimeout(processNext, 1000, files, scannedFiles, n);
 		return;
 	}
 	if (State.mustMatch)
