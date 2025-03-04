@@ -32,10 +32,7 @@ class ImageFile {
 
 	static iconDim           = 11;   // Images will be hashed into icons of this side length
 	static ratioTolerancePct = 10;   // Image aspect ratios may differ by up to 10% before comparing
-	static acceptLumaDist    = 2;    // Images will be considered similar if there luma distance is within this threshold
-	static rejectLumaDist    = 500;  // Images will be considered distinct if there luma distance is outside this threshold
-	static rejectChromaDist  = 1000; // Images will be considered distinct if there chroma distance is outside this threshold
-	                                 // Otherwise, Images are considered similar
+	static rejectLumaDist    = 400;  // Images will be considered distinct if there luma distance is outside this threshold
 
 	static {
 		// Images will be treated as grids of "blocks", each containing "cells". Each cell is a pixel.
@@ -56,9 +53,7 @@ class ImageFile {
 		ImageFile.canvas.width  = ImageFile.canvasDim;
 		ImageFile.canvas.height = ImageFile.canvasDim;
 
-		ImageFile.acceptLumaDist   *= ImageFile.iconArea;
 		ImageFile.rejectLumaDist   *= ImageFile.iconArea;
-		ImageFile.rejectChromaDist *= ImageFile.iconArea;
 	}
 
 	constructor(file) {
@@ -198,53 +193,44 @@ class ImageFile {
 		let data = ImageFile.context.getImageData(0, 0, ImageFile.canvasDim, ImageFile.canvasDim).data; // slow
 		const timeStartHashing = performance.now();
 		Results.durationLoading += (timeStartHashing - timeStartLoading);
+		data = ImageFile.rgbaToGreyscale(data);
 		data = ImageFile.boxBlur(data, ImageFile.canvasDim, ImageFile.canvasDim, ImageFile.cellDim, ImageFile.cellDim);
 		data = ImageFile.boxBlur(data, ImageFile.blockDim, ImageFile.blockDim, 3, 2);
-		data = ImageFile.rgbaToYcbcr(data);
-		data = [ImageFile.normalize(data[0]), ImageFile.normalize(data[1]), ImageFile.normalize(data[2])];
+		data = ImageFile.normalize(data);
 		Results.durationHashing += (performance.now() - timeStartHashing);
 		return data;
 	}
 
-	static rgbaToYcbcr(data, channelsIn=4) {
-		// see ITU-T T.871
-		const YBR = [[], [], []];
+	static rgbaToGreyscale(data) {
+		let grey = new Array(data.length/4);
 		let r = 0, g = 0, b = 0;
-
-		for (let i = 0; i < ImageFile.iconArea; i++) {
-			r = data[channelsIn*i    ];
-			g = data[channelsIn*i + 1];
-			b = data[channelsIn*i + 2];
-			YBR[0][i] =       0.2990000000 * r + 0.5870000000 * g + 0.1140000000 * b;
-			YBR[1][i] = 128 - 0.1687358916 * r - 0.3312641084 * g + 0.5000000000 * b;
-			YBR[2][i] = 128 + 0.5000000000 * r - 0.4186875892 * g - 0.0813124108 * b;
+		for (let i = 0, j = 0; i < data.length; i += 4, j++) {
+			let r = data[i  ];
+			let g = data[i+1];
+			let b = data[i+2];
+			grey[j] = 0.2990000000 * r + 0.5870000000 * g + 0.1140000000 * b;
 		}
-
-		return YBR;
+		return grey;
 	}
 
-	static boxBlur(data, width, height, windowDim, shift, channelsIn=4) {
+	static boxBlur(data, width, height, windowDim, shift) {
 		const destDim = parseInt((width-windowDim)/shift) + 1;
-		const blurredData = new Array(destDim * 3);
+		const blurredData = new Array(destDim ** 2);
 		const n = windowDim ** 2;
-		let sumR = 0, sumG = 0, sumB = 0;
+		let sum;
 		let i = 0, j = 0;
 
 		for (let shiftRow = 0; shiftRow <= width-windowDim; shiftRow += shift) {
 			for (let shiftCol = 0; shiftCol <= height-windowDim; shiftCol += shift) {
-				sumR = 0, sumG = 0, sumB = 0;
+				sum = 0;
 				for (let row = 0; row < windowDim; row++) {
 					for (let col = 0; col < windowDim; col++) {
-						i = channelsIn * ((row + shiftRow) * width + (col + shiftCol));
-						sumR += data[i    ];
-						sumG += data[i + 1];
-						sumB += data[i + 2];
+						i = ((row + shiftRow) * width + (col + shiftCol));
+						sum += data[i];
 					}
 				}
-				blurredData[j    ] = sumR / n;
-				blurredData[j + 1] = sumG / n;
-				blurredData[j + 2] = sumB / n;
-				j += channelsIn;
+				blurredData[j] = sum / n;
+				j++;
 			}
 		}
 
@@ -286,29 +272,9 @@ class ImageFile {
 
 		dist = 0;
 		for (let i = 0; i < ImageFile.iconArea; i++) {
-			dist += (icon1[0][i] - icon2[0][i]) ** 2;
+			dist += (icon1[i] - icon2[i]) ** 2;
 		}
 		if (dist > ImageFile.rejectLumaDist) {
-			return false;
-		}
-
-		if (dist < ImageFile.acceptLumaDist) {
-			return true;
-		}
-
-		dist = 0;
-		for (let i = 0; i < ImageFile.iconArea; i++) {
-			dist += (icon1[1][i] - icon2[1][i]) ** 2;
-		}
-		if (dist > ImageFile.rejectChromaDist) {
-			return false;
-		}
-
-		dist = 0;
-		for (let i = 0; i < ImageFile.iconArea; i++) {
-			dist += (icon1[2][i] - icon2[2][i]) ** 2;
-		}
-		if (dist > ImageFile.rejectChromaDist) {
 			return false;
 		}
 
