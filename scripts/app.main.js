@@ -258,26 +258,25 @@ class ImageFile {
 		return norm;
 	}
 
+	static distance(a, b) {
+		const icon1 = a.hash, icon2 = b.hash;
+		let dist  = 0;
+		for (let i = 0; i < ImageFile.iconArea; i++) {
+			dist += (icon1[i] - icon2[i]) ** 2;
+		}
+		return dist
+	}
+
 	similar(other) {
-		const icon1 = this.hash, icon2 = other.hash;
 		const w1 = this.width,  w2 = other.width;
 		const h1 = this.height, h2 = other.height;
-
-		let dist  = 0;
-
 		// abs(ratio1 - ratio2) > tol% * max(ratio1, ratio2)  -->  reject
 		if (Math.abs(100*h1*w2 - 100*h2*w1) > Math.max(h1*w2, h2*w1) * ImageFile.ratioTolerancePct) {
 			return false;
 		}
-
-		dist = 0;
-		for (let i = 0; i < ImageFile.iconArea; i++) {
-			dist += (icon1[i] - icon2[i]) ** 2;
-		}
-		if (dist > ImageFile.rejectLumaDist) {
+		if (ImageFile.distance(this, other) > ImageFile.rejectLumaDist) {
 			return false;
 		}
-
 		return true;
 	}
 
