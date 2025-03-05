@@ -16,6 +16,11 @@ const Config = {
 const Results = {
 	filecount           : 0,
 	clusters            : [],
+	timeStart           : null,
+	timeEnd             : null,
+	durationLoading     : 0,
+	durationHashing     : 0,
+	durationSearch      : 0,
 };
 
 const DOM = {}
@@ -209,13 +214,17 @@ class ImageFile {
 	*/
 
 	static getHash() {
+		const timeStartLoading = performance.now();
 		ImageFile.context.drawImage(ImageFile.img, 0, 0, ImageFile.canvasDim, ImageFile.canvasDim); // very slow
 		let data = ImageFile.context.getImageData(0, 0, ImageFile.canvasDim, ImageFile.canvasDim).data; // slow
+		const timeStartHashing = performance.now();
+		Results.durationLoading += (timeStartHashing - timeStartLoading);
 		//data = ImageFile.rgbaToYcbcr(data); // there is slightly less float instability when this is performed before the box blur, but it is negligible
 		data = ImageFile.boxBlur(data, ImageFile.canvasDim, ImageFile.canvasDim, ImageFile.cellDim, ImageFile.cellDim);
 		data = ImageFile.boxBlur(data, ImageFile.blockDim, ImageFile.blockDim, 3, 2);
 		data = ImageFile.rgbaToYcbcr(data); // performing the conversion here avoids a lot of float arithmetic and can separate into channels
 		data = [ImageFile.normalize(data[0]), ImageFile.normalize(data[1]), ImageFile.normalize(data[2])];
+		Results.durationHashing += (performance.now() - timeStartHashing);
 		return data;
 	}
 
@@ -387,6 +396,7 @@ class ImageFile {
 
 // typeof files = FileList or Array[File]
 async function startSearch(allFiles) {
+	Results.timeStart = performance.now();
 	Config.fastRead = document.getElementById("fast-option").checked;
 
 	allImageFiles = [];
@@ -426,9 +436,11 @@ function processNext(files, scannedFiles=[], n=0) {
 
 	ifile.load()
 		.then(() => {
+			const timeSearchStart = performance.now();
 			searchForMatch(ifile, scannedFiles);
 			if (!State.mustMatch)
 				scannedFiles.push(ifile);
+			Results.durationSearch += (performance.now() - timeSearchStart);
 		})
 		.catch((err) => {
 			console.log("*** error loading " + ifile.path);
@@ -755,6 +767,11 @@ function updateUIDuplicateFound(ifile) {
 }
 
 function updateUISearchDone() {
+	Results.timeEnd = performance.now();
+	console.log("Total duration:     " + (Results.timeEnd - Results.timeStart) + "ms");
+	console.log("Loading duration:   " + Results.durationLoading + "ms");
+	console.log("Hashing duration:   " + Results.durationHashing + "ms");
+	console.log("Searching duration: " + Results.durationSearch + "ms");
 	document.getElementById("button-pause-search").classList.add("hidden");
 	const progress = document.querySelector(".progress");
 	progress.removeChild(progress.querySelector(".progress-bar"));
