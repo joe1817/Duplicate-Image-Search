@@ -192,58 +192,19 @@ class ImageFile {
 		reader.readAsArrayBuffer(this.file.slice(0, 80*1024));
 	}
 
-	/*
-	static icon_test() {
-		ImageFile.context.drawImage(ImageFile.img, 0, 0, ImageFile.iconDim, ImageFile.iconDim);
-		let data = ImageFile.context.getImageData(0, 0, ImageFile.iconDim, ImageFile.iconDim).data;
-
-		let YBR = [[], [], []];
-		let r = 0, g = 0, b = 0;
-
-		for (let i = 0; i < ImageFile.iconDim**2; i++) {
-			r = data[4*i  ];
-			g = data[4*i+1];
-			b = data[4*i+2];
-			// convert RGB to YCbCr
-			YBR[0][i] = 0.299000 * r + 0.587000 * g + 0.114000 * b;
-			YBR[1][i] = 128 - 0.168736 * r - 0.331264 * g + 0.500000 * b;
-			YBR[2][i] = 128 + 0.500000 * r - 0.418688 * g - 0.081312 * b;
-		}
-		return [ImageFile.normalize(YBR[0]), ImageFile.normalize(YBR[1]), ImageFile.normalize(YBR[2])];
-	}
-	*/
-
 	static getHash() {
 		const timeStartLoading = performance.now();
 		ImageFile.context.drawImage(ImageFile.img, 0, 0, ImageFile.canvasDim, ImageFile.canvasDim); // very slow
 		let data = ImageFile.context.getImageData(0, 0, ImageFile.canvasDim, ImageFile.canvasDim).data; // slow
 		const timeStartHashing = performance.now();
 		Results.durationLoading += (timeStartHashing - timeStartLoading);
-		//data = ImageFile.rgbaToYcbcr(data); // there is slightly less float instability when this is performed before the box blur, but it is negligible
 		data = ImageFile.boxBlur(data, ImageFile.canvasDim, ImageFile.canvasDim, ImageFile.cellDim, ImageFile.cellDim);
 		data = ImageFile.boxBlur(data, ImageFile.blockDim, ImageFile.blockDim, 3, 2);
-		data = ImageFile.rgbaToYcbcr(data); // performing the conversion here avoids a lot of float arithmetic and can separate into channels
+		data = ImageFile.rgbaToYcbcr(data);
 		data = [ImageFile.normalize(data[0]), ImageFile.normalize(data[1]), ImageFile.normalize(data[2])];
 		Results.durationHashing += (performance.now() - timeStartHashing);
 		return data;
 	}
-
-	/*
-	static rgbaToYcbcr(data) {
-		// see ITU-T T.871
-		let YBR = new Array(data.length*3/4);
-		let r = 0, g = 0, b = 0;
-		for (let i = 0, j = 0; i < data.length; i += 4, j += 3) {
-			let r = data[i  ];
-			let g = data[i+1];
-			let b = data[i+2];
-			YBR[j  ] =       0.2990000000 * r + 0.5870000000 * g + 0.1140000000 * b;
-			YBR[j+1] = 128 - 0.1687358916 * r - 0.3312641084 * g + 0.5000000000 * b;
-			YBR[j+2] = 128 + 0.5000000000 * r - 0.4186875892 * g - 0.0813124108 * b;
-		}
-		return YBR;
-	}
-	*/
 
 	static rgbaToYcbcr(data, channelsIn=4) {
 		// see ITU-T T.871
@@ -631,32 +592,6 @@ function updateUIDuplicateFound(ifile) {
 	divImgSize.textContent = parseInt(ifile.file.size/1024);
 	divImgDate.textContent = formatDate(new Date(ifile.file.lastModified));
 	divImgPath.textContent = ifile.relpath;
-
-	/*
-	// alphabetize images by path name
-	tmp = Array.from(divClusterImgs.children)
-	tmp.sort((a,b) => {
-		const textA = a.children[0].title;
-		const textB = b.children[0].title;
-		const diff = textA.split("/").length - textB.split("/").length;
-		if (diff) return diff;
-		return textA.localeCompare(textB);
-	});
-	divClusterImgs.innerHTML = "";
-	tmp.forEach(child => divClusterImgs.appendChild(child));
-
-	// alphabetize path names
-	tmp = Array.from(divClusterInfo.children)
-	tmp.sort((a,b) => {
-		const textA = a.querySelector(".path").textContent;
-		const textB = b.querySelector(".path").textContent;
-		const diff = textA.split("/").length - textB.split("/").length;
-		if (diff) return diff;
-		return textA.localeCompare(textB);
-	});
-	divClusterInfo.innerHTML = "";
-	tmp.forEach(child => divClusterInfo.appendChild(child));
-	*/
 
 	mouseOverFunc = (event) => {
 		const clusterNum = document.querySelectorAll(".cluster-num")[ifile.clusterID];
