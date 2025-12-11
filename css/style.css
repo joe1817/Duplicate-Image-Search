@@ -1,5 +1,6 @@
 html, body {
 	height: 100%;
+	padding: 0;
 	margin: 0;
 }
 
@@ -8,6 +9,7 @@ body {
 	font-size: 14px;
 	color: #BBB;
 	background-color: #333;
+	scrollbar-gutter: stable;
 }
 
 h1 {
@@ -93,7 +95,7 @@ h2 {
 
 /* First "page" */
 
-.options-page {
+#options-page {
 	font-size: 12px;
 	display: flex;
 	flex-direction: column;
@@ -329,6 +331,10 @@ input[type="checkbox"] {
 
 /* Second "page" */
 
+#results-page {
+	padding-top: 180px;
+}
+
 .header {
 	position: fixed;
 	top: 0;
@@ -412,7 +418,6 @@ textarea {
 }
 
 .textarea {
-	display: none;
 	margin-bottom: 14px;
 	font-size: 0.8em;
 	color: #EEE;
@@ -441,13 +446,6 @@ textarea {
 	left: 50%;
 	transform: translate(-50%, 0%);
 	z-index: 1000;
-}
-
-.clusters {
-	margin-right: 20px;
-	margin-top: 72px;
-	margin-bottom: 40px;
-	padding-top: 102px;
 }
 
 .cluster {
@@ -551,4 +549,16 @@ img {
 
 .highlighted.hovered {
 	background-color: #F66;
+}
+
+#back-to-top {
+	position: fixed;
+	bottom: 20px;
+	right: 20px;
+	z-index: 1000;
+	padding: 0.8em;
+	border: none;
+	visibility: hidden;
+	opacity: 0;
+	transition: opacity 0.2s ease-in-out;
 }

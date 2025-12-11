@@ -1,85 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-	<title>Duplicate Image Search</title>
-	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<link rel="icon" type="image/png" href="images/favicon.png">
-	<link rel="stylesheet" type="text/css" href="css/fonts.css">
-	<link rel="stylesheet" type="text/css" href="css/style.css">
-	<script src="./scripts/app.path-sort.js"></script>
+
+<title>Duplicate Image Search</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="favicon.png"/>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="stylesheet" type="text/css" href="css/fonts.css">
+<link rel="stylesheet" type="text/css" href="css/style.css">
+<script src="https://unpkg.com/vue@3.5.13/dist/vue.global.js"></script>
+<script src="https://unpkg.com/vuex@4.0.0/dist/vuex.global.js"></script>
+<script src="scripts/path-sort.js"></script>
+<script src="scripts/image-file.js"></script>
+<script src="components/App.js"></script>
+<script src="components/State.js"></script>
+<script src="components/SetupPage.js"></script>
+<script src="components/ResultsPage.js"></script>
+<script src="components/Cluster.js"></script>
+<script src="components/Thumbnail.js"></script>
+<script src="components/ScrollToTop.js"></script>
+<script src="components/main.js"></script>
 </head>
 
-<body>
-
-	<div id="dropzone" class="options-page">
-
-	<h1>Duplicate Image Search</h1>
-	<h2>Search a folder for groups of similar-looking images.</h2>
-
-	<div class="options">
-	<div id="js-disabled" class="option-content error-text">Enable Javascript to Start</div>
-
-	<div id="js-enabled" class="hidden">
-	<div id="options-start" class="option-content">
-	<input type="file" id="input-file" class="hidden" accept="image/*">
-	<input type="file" id="input-dir"  class="hidden" accept="image/*" webkitdirectory multiple>
-	<div class="button-wrapper">
-	<div><span id="optional" class="tooltip left" data-tip="This specifies a file to match against. The search will only find images that are similar to this one. Ignore this to find all groups of similar images in the folder.">Optional: </span><div id="button-file" class="button tall noselect" onclick="filePicker()">Select File</div><span id="selected-file" class="hidden"><span class="x" onclick="reloadPage()">×</span><span id="file-path"></span></span></div>
-	<div><div id="button-dir"  class="button tall noselect" onclick="dirPicker()">Select Folder</div></div>
-	</div>
-
-	<div class="fast-option noselect" onclick="clickCheckbox(event)">
-	<input type="checkbox" id="fast-option" onclick="updateLocalStorage()">
-	<span class="tooltip right" data-tip="This may be faster when scanning a bunch of JPEG photos, especially if they were taken from a professional camera. However, there is a slightly higher chance to mismatch images.">Read JPEG Thumbnails</span>
-	</div>
-	</div>
-
-	<div id="options-cancel" class="option-content hidden">
-	<div id="button-cancel" class="button hollow tall noselect" onclick="reloadPage()">Cancel Search</div><span id="spinner"><div class="spinner-dual-ring"></div></span>
-	</div>
-	</div>
-	</div>
-
-	<div class="footer">
-	<p>1. The search is performed locally. None of your files are sent over the Internet.</p>
-	<p>2. It may take a few seconds for the search to start, depending on how many files are in the selected folder.</p>
-	<div class="social-links"><div class="img-rescale"><a href="https://github.com/joe1817/Duplicate-Image-Search"><img src="images/github-mark-white.png" /></a></div></div>
-	</div>
-	</div>
-
-	<div class="header hidden">
-
-	<div class="header-title">
-	<h1>Duplicate Image Search</h1>
-	<div class="search-buttons">
-	<div id="button-pause-search" class="button narrow noselect" onclick="togglePause()">Pause</div>
-	<div class="button narrow noselect" onclick="reloadPage()">New Search</div>
-	</div>
-	</div>
-
-	<div class="progress">
-	<div class="progress-bar">
-	<div id="progress-bar-inner"></div>
-	</div>
-	<div class="progress-text"></div>
-	</div>
-
-	<div class="file-lists">
-	<span id="show-all-button"><span class="text-button" onclick="showAllList()">list all</span></span>
-	<span id="show-high-button">&nbsp;—&nbsp;&nbsp;<span class="text-button" onclick="showHighlightedList()">list highlighted</span></span>
-	<span id="close-button" class="hidden"><span class="text-button" onclick="toggleList()">close list</span></span>
-	<span id="copy-button" class="hidden">&nbsp;—&nbsp;&nbsp;<span class="text-button" onclick="copyListToClipboard()">copy list</span></span>
-	<span id="save-button" class="hidden">&nbsp;—&nbsp;&nbsp;<span class="text-button" onclick="downloadList()">download list</span></span>
-	<textarea class="textarea" spellcheck="false"></textarea>
-	</div>
-	</div>
-
-	<div id="clusters" class="clusters hidden noselect"></div>
-
-	<div id="message" class="hidden"></div>
-
-	<script src="./scripts/app.main.js"></script>
+<body id="app-main">
 </body>
+
 </html>
