@@ -6,7 +6,7 @@ const Cluster = {
 	<div ref="num" class="cluster-num" @click="toggleCluster">
 		{{ clusterIndex + 1 }}
 	</div>
-	<div ref="clusterContent" class="cluster-content">
+	<div ref="clusterContent" class="cluster-content" @mouseup="mouseUpHandler">
 		<div class="cluster-imgs">
 			<Thumbnail
 				v-for="(ifile, index) in cluster"
@@ -52,6 +52,11 @@ const Cluster = {
 		},
 
 		reset() {
+			/*
+			if (this.direction && this.highlightedCount && ResultsPageNonReactiveSettings.autoHideState) {
+				this.toggleCluster();
+			}
+			*/
 			this.direction = null;
 		},
 
@@ -83,6 +88,12 @@ const Cluster = {
 					this.direction = !this.isHighlighted(index);
 					this.toggleHighlight(index);
 				}
+			}
+		},
+
+		mouseUpHandler() {
+			if (this.direction && this.highlightedCount && ResultsPageNonReactiveSettings.autoHideState) {
+				this.toggleCluster();
 			}
 		},
 

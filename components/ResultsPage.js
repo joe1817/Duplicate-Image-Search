@@ -1,3 +1,7 @@
+const ResultsPageNonReactiveSettings = {
+	autoHideState : false,
+}
+
 const ResultsPage = {
 
 	template: `
@@ -25,11 +29,12 @@ const ResultsPage = {
 			<div>
 				<span id="show-all-button"  v-show="!textareaOn"><span class="text-button noselect" @click="showAllList">list all</span></span>
 				<span id="show-high-button" v-show="!textareaOn">&nbsp;—&nbsp;&nbsp;<span class="text-button noselect" @click="showHighlightedList">list highlighted</span></span>
+				<span id="hide-checkbox"    v-show="!textareaOn">&nbsp;—&nbsp;&nbsp;<input type="checkbox" id="hide-option" v-model="autoHideState"><label for="hide-option">Auto Hide Selected Clusters</label></span>
 				<span id="close-button"     v-show="textareaOn"><span class="text-button noselect" @click="closeList">[×]</span></span>
 				<span id="copy-button"      v-show="textareaOn">&nbsp;—&nbsp;&nbsp;<span class="text-button noselect" @click="copyListToClipboard">copy list</span></span>
 				<span id="save-button"      v-show="textareaOn">&nbsp;—&nbsp;&nbsp;<span class="text-button noselect" @click="downloadList">download list</span></span>
 			</div>
-			<textarea ref="textarea"    v-show="textareaOn" class="textarea" spellcheck="false"></textarea>
+			<textarea ref="textarea" v-show="textareaOn" class="textarea" spellcheck="false"></textarea>
 		</div>
 	</div>
 
@@ -167,6 +172,15 @@ const ResultsPage = {
 				if (!this.endedState) {
 					this.$store.commit("SET_SEARCH_STATE", val ? "search_paused" : "search_running");
 				}
+			}
+		},
+
+		autoHideState: {
+			get() {
+				return ResultsPageNonReactiveSettings.autoHideState;
+			},
+			set(val) {
+				ResultsPageNonReactiveSettings.autoHideState = val;
 			}
 		},
 
