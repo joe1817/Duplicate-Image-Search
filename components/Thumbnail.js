@@ -12,7 +12,7 @@ const Thumbnail = {
 		//console.log("generating thumbnail");
 		const thumb = this.$refs.thumb;
 		const dims = this.$refs.dims;
-		
+
 		thumb.ondragstart = function(event) { return false; };
 
 		this.ifile.createThumbnail().then(() => {

@@ -2,13 +2,14 @@ const State = {
 
 	state() {
 		return {
-			mustMatch: null,
-			fastRead : false,
-			searchStatus: "search_pending", //search_init, search_running, search_paused, search_ended
-			clusters: [],
-			total: 0,
-			progress: 0,
-			error: 0,
+			mustMatch    : null,
+			fastRead     : false,
+			exactMatch   : false,
+			searchStatus : "search_pending", //search_init, search_running, search_paused, search_ended
+			clusters     : [],
+			total        : 0,
+			progress     : 0,
+			error        : 0,
 		}
 	},
 
@@ -35,6 +36,10 @@ const State = {
 			state.fastRead = payload;
 		},
 
+		SET_EXACT_STATE(state, payload) {
+			state.exactMatch = payload;
+		},
+
 		SET_TOTAL(state, payload) {
 			state.total = payload;
 		},
@@ -50,24 +55,56 @@ const State = {
 
 	actions: {
 		// typeof files = FileList or Array[File]
-		async startSearch({ commit, state }, allFiles) {
-			commit("SET_TOTAL", allFiles.length);
+		async startSearch({ commit, state }, inputFiles) {
+			console.log("Input files: " + inputFiles.length);
 
-			allImageFiles = [];
-			Array.from(allFiles).forEach(file => {
+			const validFiles = [];
+			Array.from(inputFiles).forEach(file => {
 				let ifile = new ImageFile(file);
 				if (ifile.isValid()) {
-					allImageFiles.push(ifile);
+					validFiles.push(ifile);
 				}
 			});
-			allImageFiles.sort((a,b) => {
+			validFiles.sort((a,b) => {
 				return -PathSort.compare(a.relpath, b.relpath); // negative b/c items will be popped from the back
 			});
+
+			console.log("Valid files: " + validFiles.length);
+
+			commit("SET_TOTAL", validFiles.length);
+
+			let candidates = [];
+			if (state.exactMatch && state.mustMatch !== null) {
+				Array.from(validFiles).forEach(ifile => {
+					if (ifile.file.size == state.mustMatch.size) {
+						candidates.push(ifile);
+					}
+				});
+			} else if (state.exactMatch) {
+				// only examine images with non-unique file sizes
+				const uniqueSizes = new Set();
+				Array.from(validFiles).forEach(ifile => {
+					if (uniqueSizes.has(ifile.file.size)) {
+						uniqueSizes.delete(ifile.file.size);
+					} else {
+						uniqueSizes.add(ifile.file.size);
+					}
+				});
+				Array.from(validFiles).forEach(ifile => {
+					if (!uniqueSizes.has(ifile.file.size)) {
+						candidates.push(ifile);
+					}
+				});
+			} else {
+				candidates = validFiles;
+			}
+
+			console.log("Candidate files: " + candidates.length);
 
 			const mustMatch = (state.mustMatch ? new ImageFile(state.mustMatch) : null);
 			if (mustMatch) {
 				mustMatch.clusterID = 0;
-				await mustMatch.load();
+				await mustMatch.load(state.fastRead, state.exactMatch);
 			}
 
 			commit("SET_SEARCH_STATE", "search_running");
@@ -88,10 +125,10 @@ const State = {
 
 				let ifile = files.pop();
 
-				ifile.load()
+				ifile.load(state.fastRead, state.exactMatch)
 					.then(() => {
 						for (const ifile2 of scannedFiles) {
-							if (ifile.similar(ifile2)) {
+							if (ifile.similar(ifile2, state.exactMatch)) {
 								const i = ifile.clusterID;
 								const j = ifile2.clusterID;
 
@@ -114,7 +151,8 @@ const State = {
 						}
 					})
 					.catch((err) => {
-						console.log("ERROR loading: " + ifile.path);
+						console.log("ERROR loading: " + ifile.relpath);
+						console.log(err);
 						commit("INC_ERROR");
 					})
 					.finally(() => {
@@ -123,7 +161,7 @@ const State = {
 					});
 			}
 
-			processNext(allImageFiles);
+			processNext(candidates);
 		}
 	}
 }

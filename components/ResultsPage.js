@@ -11,10 +11,10 @@ const ResultsPage = {
 		<div class="header-title">
 			<h1>Duplicate Image Search</h1>
 			<div class="search-buttons">
-				<div id="button-pause-search" :class="['button', 'narrow', 'noselect', {hidden: endedState}]" @click="togglePause">
+				<div id="button-pause-search" :class="['button', 'noselect', {hidden: endedState}]" @click="togglePause">
 					{{ ($store.state.searchStatus == 'search_paused') ? 'Resume' : 'Pause' }}
 				</div>
-				<div class="button narrow noselect" @click="reloadPage">New Search</div>
+				<div class="button noselect" @click="reloadPage">New Search</div>
 			</div>
 		</div>
 
@@ -51,7 +51,7 @@ const ResultsPage = {
 
 	<div ref="message" id="message" v-show="messageText">{{ messageText }}</div>
 
-	<ScrollToTop class="button narrow noselect"></ScrollToTop>
+	<ScrollToTop class="button noselect"></ScrollToTop>
 </div>
 `,
 
@@ -224,7 +224,7 @@ const ResultsPage = {
 			} else {
 				return "";
 			}
-		}
+		},
 	},
 
 	watch: {
@@ -234,6 +234,6 @@ const ResultsPage = {
 
 		resultsText(msg) {
 			this.messageText = msg;
-		}
+		},
 	}
 }
