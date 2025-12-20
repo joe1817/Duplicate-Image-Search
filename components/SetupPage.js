@@ -11,7 +11,7 @@ const SetupPage = {
 			<input type="file" ref="inputDir"  class="hidden" accept="image/*" webkitdirectory multiple @change="onDirChangeHandler" @cancel="reloadPage">
 			<div class="button-wrapper">
 				<div>
-					<span id="optional" class="tooltip left" data-tip="This specifies a file to match against, meaning the search will only find images that are similar to this one. Ignore this option to find all groups of similar images in the selected folder.">Optional: </span>
+					<span id="optional" class="tooltip left noselect" data-tip="This specifies a file to match against, meaning the search will only find images that are similar to this one. Ignore this option to find all groups of similar images in the selected folder.">Optional: </span>
 					<div id="button-file" class="button wide tall noselect" @click="filePicker($event)">Select File</div>
 					<span id="selected-file" v-show="$store.state.mustMatch"><span class="x" @click="removeMustMatchFile">×</span><span ref="filePath"></span></span>
 				</div>
@@ -19,15 +19,15 @@ const SetupPage = {
 			</div>
 
 			<div class="checkboxes">
-				<div class=" noselect" @click="clickFastReadCheckbox($event)">
-					<input type="checkbox" ref="fastOption" v-model="fastReadState">
-					<span class="tooltip right" data-tip="This may be faster when scanning a bunch of JPEG photos, especially if they were taken from a professional camera. However, there is a slightly higher chance to mismatch images.">Read JPEG Thumbnails</span>
+				<div>
+					<input type="checkbox" id="fastOption" ref="fastOption" v-model="fastReadState">
+					<label class="tooltip right noselect" for="fastOption" data-tip="This may be faster when scanning a bunch of JPEG photos, especially if they were taken from a professional camera. However, there is a slightly higher chance to mismatch images.">Read JPEG Thumbnails</label>
 				</div>
 
-				<div class="noselect" @click="clickExactCheckbox($event)">
-					<input type="checkbox" ref="exactOption" v-model="exactState">
-					<span class="tooltip right" data-tip="Search only for images that are exactly the same. This is much faster than a perceptual match, but it will fail to match files that differ by just one pixel or have different metadata.">Exact Match</span>
-			</div>
+				<div>
+					<input type="checkbox" id="exactOption" ref="exactOption" v-model="exactState">
+					<label class="tooltip right noselect" for="exactOption" data-tip="Search only for images that are exactly the same. This is much faster than a perceptual match, but it will fail to match files that differ by just one pixel or have different metadata.">Exact Match</label>
+				</div>
 			</div>
 		</div>
 
@@ -51,18 +51,6 @@ const SetupPage = {
 	methods: {
 		reloadPage() {
 			location.reload()
-		},
-
-		clickFastReadCheckbox(event) {
-			if (event.target.tagName != "INPUT") {
-				this.$refs.fastOption.click();
-			}
-		},
-
-		clickExactCheckbox(event) {
-			if (event.target.tagName != "INPUT") {
-				this.$refs.exactOption.click();
-			}
 		},
 
 		filePicker(event) {
