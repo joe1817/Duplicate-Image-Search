@@ -27,14 +27,15 @@ const ResultsPage = {
 
 		<div class="file-lists">
 			<div>
-				<span id="show-all-button"  v-show="!textareaOn"><span class="text-button noselect" @click="showAllList">list all</span></span>
-				<span id="show-high-button" v-show="!textareaOn">&nbsp;—&nbsp;&nbsp;<span class="text-button noselect" @click="showHighlightedList">list highlighted</span></span>
-				<span id="hide-checkbox"    v-show="!textareaOn">&nbsp;—&nbsp;&nbsp;<input type="checkbox" id="hide-option" v-model="autoHideState"><label for="hide-option">Auto Hide Selected Clusters</label></span>
-				<span id="close-button"     v-show="textareaOn"><span class="text-button noselect" @click="closeList">[×]</span></span>
-				<span id="copy-button"      v-show="textareaOn">&nbsp;—&nbsp;&nbsp;<span class="text-button noselect" @click="copyListToClipboard">copy list</span></span>
-				<span id="save-button"      v-show="textareaOn">&nbsp;—&nbsp;&nbsp;<span class="text-button noselect" @click="downloadList">download list</span></span>
+				<span v-show="!textareaOn"><span class="text-button noselect" @click="openList">list files</span></span>
+				<span v-show="!textareaOn">&nbsp;—&nbsp;&nbsp;<input type="checkbox" id="hide-option" v-model="autoHideState"><label class="noselect" for="hide-option">Auto Hide Selected Clusters</label></span>
+				<span v-show="textareaOn"><span class="text-button noselect" @click="closeList">[×]</span></span>
+				<span v-show="textareaOn">&nbsp;—&nbsp;&nbsp;<span class="text-button noselect" @click="copyListToClipboard">copy list</span></span>
+				<span v-show="textareaOn">&nbsp;—&nbsp;&nbsp;<span class="text-button noselect" @click="downloadList">download list</span></span>
+				<span v-show="textareaOn">&nbsp;—&nbsp;&nbsp;<input type="checkbox" id="show-high-option" v-model="showHighState"><label class="noselect" for="show-high-option">Show Highlighted Only</label></span>
+				<span v-show="textareaOn">&nbsp;—&nbsp;&nbsp;<input type="checkbox" id="script-option" v-model="scriptState"><label class="noselect" for="script-option">Deletion Script</label></span>
 			</div>
-			<textarea ref="textarea" v-show="textareaOn" class="textarea" spellcheck="false"></textarea>
+			<textarea class="textarea" ref="textarea" v-model="textareaText" v-show="textareaOn" spellcheck="false" readonly></textarea>
 		</div>
 	</div>
 
@@ -46,6 +47,7 @@ const ResultsPage = {
 			:cluster="cluster"
 			:clusterIndex="index"
 			@select="selectHandler"
+			@highlight="highlightHandler"
 		></Cluster>
 	</div>
 
@@ -57,8 +59,12 @@ const ResultsPage = {
 
 	data() {
 		return {
-			textareaOn  : false,
-			messageText : "",
+			textareaOn    : false,
+			showHighState : true,
+			scriptState   : false,
+			highSize      : 0,
+			messageText   : "",
+			highlightedCoords : new Set(),
 		}
 	},
 
@@ -79,6 +85,17 @@ const ResultsPage = {
 			return d.getFullYear() + "." + (d.getMonth()+1).toString().padStart(2, "0") + "." + d.getDate().toString().padStart(2, "0");
 		},
 
+		formatBytes(bytes, decimals = 2) {
+			if (bytes === 0) return "0 Bytes";
+
+			const k = 1024;
+			const dm = decimals < 0 ? 0 : decimals;
+			const sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB"];
+
+			const i = Math.floor(Math.log(bytes) / Math.log(k));
+			return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
+		},
+
 		togglePause() {
 			this.pausedState = !this.pausedState;
 		},
@@ -87,48 +104,25 @@ const ResultsPage = {
 			this.copyToClipboard(ifile.relpath);
 		},
 
+		highlightHandler(highlightOn, coords) {
+			if (highlightOn) {
+				this.highlightedCoords.add(coords);
+				const [clusterIndex, fileIndex] = coords.split(",").map(Number);
+				this.highSize += this.$store.state.clusters[clusterIndex][fileIndex].file.size;
+			} else {
+				this.highlightedCoords.delete(coords);
+				const [clusterIndex, fileIndex] = coords.split(",").map(Number);
+				this.highSize -= this.$store.state.clusters[clusterIndex][fileIndex].file.size;
+			}
+		},
+
 		keyDownHandler(event) {
 			if (event.key === "Escape") {
 				this.textareaOn = false;
 			}
 		},
 
-		showAllList() {
-			const onWindows = navigator.userAgent.toLowerCase().includes("win");
-			let text = "";
-			for (let cluster of this.$store.state.clusters) {
-				for (let ifile of cluster) {
-					let path = ifile.file.webkitRelativePath || ifile.file.name;
-					if (onWindows) {
-						path = path.replaceAll("/", "\\");
-					}
-					text = text.concat(path, "\n");
-				}
-				text = text.concat("\n");
-			}
-			text = text.trimEnd();
-			this.$refs.textarea.value = text;
-			this.textareaOn = true;
-		},
-
-		showHighlightedList() {
-			const onWindows = navigator.userAgent.toLowerCase().includes("win");
-			let text = "";
-			for (let cluster of this.$refs.cluster) {
-				let paths = cluster.$el.querySelectorAll(".highlighted.img-info > .path");
-				if (paths.length) {
-					for (let path of paths) {
-						path = path.textContent;
-						if (onWindows) {
-							path = path.replaceAll("/", "\\");
-						}
-						text = text.concat(path, "\n");
-					}
-					text = text.concat("\n");
-				}
-			}
-			text = text.trimEnd();
-			this.$refs.textarea.value = text;
+		openList() {
 			this.textareaOn = true;
 		},
 
@@ -142,8 +136,10 @@ const ResultsPage = {
 		},
 
 		downloadList() {
+			const onWindows = navigator.userAgent.toLowerCase().includes("win");
 			const data = this.$refs.textarea.value;
-			const filename = `selected-duplicates-${this.formatDate(new Date())}.txt`;
+			const ext = this.scriptState ? (onWindows ? "bat" : "sh") : "txt";
+			const filename = `selected-duplicates-${this.formatDate(new Date())}.${ext}`;
 			const type = "text/plain";
 			const file = new Blob([data], {type: type});
 			if (window.navigator.msSaveOrOpenBlob) { // IE10+
@@ -202,8 +198,12 @@ const ResultsPage = {
 			const c = this.$store.state.clusters.length;
 			const n = this.$store.state.progress;
 			const t = this.$store.state.total;
+			const h = this.highlightedCoords.size;
+			const s = this.formatBytes(this.highSize);
 			if (this.endedState) {
-				return "Found ".concat(c, " cluster", (c == 1 ? "" : "s"), " in ", t, " file", (t == 1 ? "" : "s"), ".");
+				const clusterInfo = "Found ".concat(c, " cluster", (c == 1 ? "" : "s"), " in ", t, " file", (t == 1 ? "" : "s"), ".")
+				const selectedInfo = `Selected ${h} file${h == 1? "" : "s"} (${s}).`;
+				return clusterInfo + " " + selectedInfo;
 			} else {
 				return "Please wait... Reading file ".concat(n, " of ", t, ". Found ", c, " cluster", (c == 1 ? "" : "s"), " so far.");
 			}
@@ -215,7 +215,7 @@ const ResultsPage = {
 			}
 			if (this.$store.state.clusters.length == 0) {
 				if (this.$store.state.mustMatch && this.$store.state.total == 0) {
-					return "The selected folder does not contain any images of supported types. Images must be JPG, PNG, GIF, WEBP, or BMP files less than 40 MB in size.";
+					return "The selected folder does not contain any images of supported types. Images must be JPG, PNG, GIF, WEBP, or BMP files less than 20 MB in size.";
 				} else if (!this.$store.state.mustMatch && this.$store.state.total <= 1) {
 					return "The selected folder does not contain at least 2 images of supported types. Images must be JPG, PNG, GIF, WEBP, or BMP files less than 40 MB in size.";
 				} else {
@@ -223,6 +223,49 @@ const ResultsPage = {
 				}
 			} else {
 				return "";
+			}
+		},
+
+		textareaText: {
+			get() {
+				const onWindows = navigator.userAgent.toLowerCase().includes("win");
+				let text = "";
+				if (this.scriptState) {
+					text = text.concat(onWindows ? "" : "#!/bin/bash\n\n");
+				}
+				this.$store.state.clusters.forEach((cluster, clusterIndex) => {
+					let addedSome = false;
+					cluster.forEach((ifile, fileIndex) => {
+						if (!this.showHighState || this.highlightedCoords.has(`${clusterIndex},${fileIndex}`)) {
+							addedSome = true;
+							let path = ifile.file.webkitRelativePath || ifile.file.name;
+							if (onWindows) {
+								path = path.replaceAll("/", "\\");
+							}
+							if (this.scriptState) {
+								if (onWindows) {
+									path = "del \"" + path.replaceAll("\"", "\\\"") + "\"";
+								} else {
+									path = "rm \"" + path.replaceAll("\"", "\\\"") + "\"";
+								}
+							}
+							text = text.concat(path, "\n");
+						}
+					});
+					if (addedSome) {
+						text = text.concat("\n");
+					}
+				});
+				if (this.scriptState) {
+					if (onWindows) {
+						text = text.concat("pause");
+					}
+				}
+				return text.trimEnd();
+			},
+			set(val) {
+				// readonly
+				return;
 			}
 		},
 	},

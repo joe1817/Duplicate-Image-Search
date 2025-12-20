@@ -20,12 +20,12 @@ const SetupPage = {
 
 			<div class="checkboxes">
 				<div>
-					<input type="checkbox" id="fastOption" ref="fastOption" v-model="fastReadState">
+					<input type="checkbox" id="fastOption" ref="fastOption" v-model="fastReadState" autocomplete="off">
 					<label class="tooltip right noselect" for="fastOption" data-tip="This may be faster when scanning a bunch of JPEG photos, especially if they were taken from a professional camera. However, there is a slightly higher chance to mismatch images.">Read JPEG Thumbnails</label>
 				</div>
 
 				<div>
-					<input type="checkbox" id="exactOption" ref="exactOption" v-model="exactState">
+					<input type="checkbox" id="exactOption" ref="exactOption" v-model="exactState" autocomplete="off">
 					<label class="tooltip right noselect" for="exactOption" data-tip="Search only for images that are exactly the same. This is much faster than a perceptual match, but it will fail to match files that differ by just one pixel or have different metadata.">Exact Match</label>
 				</div>
 			</div>
@@ -44,8 +44,18 @@ const SetupPage = {
 </div>
 `,
 
-	loaded() {
-		window.scrollTo({top: 0});
+	mounted() {
+		this.$nextTick(()=>{
+			window.scrollTo({top: 0});
+		});
+		// give some time for browser autocompletion to finish
+		setTimeout(()=>{
+			// force Vue variables to match the browser's visual state
+			this.fastReadState = this.$refs.fastOption.checked;
+			this.exactState = this.$refs.exactOption.checked;
+			console.log("fastReadState = " + this.fastReadState);
+			console.log("exactState    = " + this.exactState);
+		}, 100);
 	},
 
 	methods: {
