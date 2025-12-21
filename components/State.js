@@ -1,16 +1,16 @@
 const State = {
 
-	state() {
-		return {
-			mustMatch    : null,
-			fastRead     : false,
-			exactMatch   : false,
-			searchStatus : "search_pending", //search_init, search_running, search_paused, search_ended
-			clusters     : [],
-			total        : 0,
-			progress     : 0,
-			error        : 0,
-		}
+	plugins: [persistence],
+
+	state: {
+		mustMatch    : null,
+		fastRead     : false,
+		exactMatch   : false,
+		searchStatus : "search_pending", //search_init, search_running, search_paused, search_ended
+		clusters     : [],
+		total        : 0,
+		progress     : 0,
+		error        : 0,
 	},
 
 	getters: {

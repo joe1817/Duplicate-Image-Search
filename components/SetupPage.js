@@ -48,6 +48,10 @@ const SetupPage = {
 		this.$nextTick(()=>{
 			window.scrollTo({top: 0});
 		});
+		// If not loading from localStorage, the store state and checkbox state can de-sync
+		// due to the BFcache (browser autocompletion), which can change the checkbox state
+		// without raising a change event needed for v-model to work as expected.
+		/*
 		// give some time for browser autocompletion to finish
 		setTimeout(()=>{
 			// force Vue variables to match the browser's visual state
@@ -56,6 +60,7 @@ const SetupPage = {
 			console.log("fastReadState = " + this.fastReadState);
 			console.log("exactState    = " + this.exactState);
 		}, 100);
+		*/
 	},
 
 	methods: {
