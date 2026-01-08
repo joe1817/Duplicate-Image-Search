@@ -11,6 +11,7 @@ const State = {
 		total        : 0,
 		progress     : 0,
 		error        : 0,
+		resultsCounter : 0,
 	},
 
 	getters: {
@@ -54,8 +55,20 @@ const State = {
 	},
 
 	actions: {
+		readySearch({ commit, state }) {
+			commit("SET_SEARCH_STATE", "search_pending");
+		},
+
 		// typeof files = FileList or Array[File]
 		async startSearch({ commit, state }, inputFiles) {
+			// clear previous results
+			clusters = [];
+			total = 0;
+			progress = 0;
+			error = 0;
+
+			state.resultsCounter++;
+
 			console.log("Input files: " + inputFiles.length);
 
 			const validFiles = [];

@@ -50,7 +50,7 @@ class PathSort {
 	}
 }
 
-const isNode = typeof module !== 'undefined' && module.exports;
+const isNode = typeof module !== "undefined" && module.exports;
 if (isNode) {
 	exports.compare = PathSort.compare;
 }
