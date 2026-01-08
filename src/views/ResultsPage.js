@@ -14,7 +14,7 @@ const ResultsPage = {
 				<div id="button-pause-search" :class="['button', 'noselect', {hidden: endedState}]" @click="togglePause">
 					{{ ($store.state.searchStatus == 'search_paused') ? 'Resume' : 'Pause' }}
 				</div>
-				<div class="button noselect" @click="reloadPage">New Search</div>
+				<div class="button noselect" @click="$store.dispatch('readySearch')">New Search</div>
 			</div>
 		</div>
 
@@ -69,9 +69,6 @@ const ResultsPage = {
 	},
 
 	methods: {
-		reloadPage() {
-			location.reload()
-		},
 
 		copyToClipboard(text) {
 			navigator.clipboard.writeText(text);
@@ -222,7 +219,7 @@ const ResultsPage = {
 			}
 			if (this.$store.state.clusters.length == 0) {
 				if (this.$store.state.mustMatch && this.$store.state.total == 0) {
-					return "The selected folder does not contain any images of supported types. Images must be JPG, PNG, GIF, WEBP, or BMP files less than 20 MB in size.";
+					return "The selected folder does not contain any images of supported types. Images must be JPG, PNG, GIF, WEBP, or BMP files less than 40 MB in size.";
 				} else if (!this.$store.state.mustMatch && this.$store.state.total <= 1) {
 					return "The selected folder does not contain at least 2 images of supported types. Images must be JPG, PNG, GIF, WEBP, or BMP files less than 40 MB in size.";
 				} else {
