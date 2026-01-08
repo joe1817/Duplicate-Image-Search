@@ -201,17 +201,18 @@ const ResultsPage = {
 		},
 
 		progressText() {
+			const m = this.$store.state.exactMatch ? "Exact Search" : "Perceptual Search";
 			const c = this.$store.state.clusters.length;
 			const n = this.$store.state.progress;
 			const t = this.$store.state.total;
 			const h = this.highlightedCoords.size;
 			const s = this.formatBytes(this.highSize);
 			if (this.endedState) {
-				const clusterInfo = "Found ".concat(c, " cluster", (c == 1 ? "" : "s"), " in ", t, " file", (t == 1 ? "" : "s"), ".")
-				const selectedInfo = `Selected ${h} file${h == 1? "" : "s"} (${s}).`;
-				return clusterInfo + " " + selectedInfo;
+				const clusterInfo = `${m}: Found ${c} cluster${c == 1 ? "" : "s"}  in ${t} file${t == 1 ? "" : "s"}.`;
+				const selectedInfo = ` Highlighted ${h} file${h == 1? "" : "s"} (${s}).`;
+				return h ? clusterInfo + selectedInfo : clusterInfo;
 			} else {
-				return "Please wait... Reading file ".concat(n, " of ", t, ". Found ", c, " cluster", (c == 1 ? "" : "s"), " so far.");
+				return `${m}: Reading file ${n} of ${t}. Found ${c} cluster${c == 1 ? "" : "s"} so far.`;
 			}
 		},
 
