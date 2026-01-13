@@ -24,7 +24,7 @@ class ImageFile {
 		ImageFile.canvas.width  = ImageFile.canvasDim;
 		ImageFile.canvas.height = ImageFile.canvasDim;
 
-		ImageFile.rejectLumaDist   *= ImageFile.iconArea;
+		ImageFile.rejectLumaDist *= ImageFile.iconArea;
 	}
 
 	constructor(file) {
@@ -67,11 +67,16 @@ class ImageFile {
 				throw Error();
 			} else {
 				await new Promise((resolve, reject) => {
-					ImageFile.img.onload = resolve;
-					ImageFile.img.onerror = reject;
+					ImageFile.img.onload = () => {
+						URL.revokeObjectURL(ImageFile.img.src);
+						resolve()
+					};
+					ImageFile.img.onerror = () => {
+						URL.revokeObjectURL(ImageFile.img.src);
+						reject();
+					};
 					ImageFile.img.src = URL.createObjectURL(data);
 				});
-				URL.revokeObjectURL(ImageFile.img.src);
 				this.hash = ImageFile.getHash();
 			}
 
@@ -121,6 +126,10 @@ class ImageFile {
 			});
 		} catch(error) {
 			return null;
+		} finally {
+			reader.onload = null;
+			reader.onerror = null;
+			reader = null;
 		}
 
 		let lo, hi;
@@ -163,7 +172,7 @@ class ImageFile {
 			console.log("thumbnail read: " + this.file.name);
 			this.thumbStart = lo;
 			this.thumbEnd   = hi;
-			return new Blob([bytes.subarray(lo, hi)], {type:"image/jpeg"});
+			return new Blob([bytes.slice(lo, hi)], {type:"image/jpeg"}); // bytes.subarray will create a "view" into bytes that prevents GC
 		} else {
 			return null;
 		}
@@ -263,11 +272,10 @@ class ImageFile {
 	}
 
 	async createThumbnail() {
+		let img = new Image();
+
 		return new Promise( (resolve, reject) => {
-
-			let img = new Image();
-
-			img.onload =  () => {
+			img.onload = () => {
 				if (this.width == null) {
 					this.width  = img.width;
 					this.height = img.height;
@@ -282,16 +290,21 @@ class ImageFile {
 				ImageFile.context.drawImage(img, 0, 0, ImageFile.canvas.width, ImageFile.canvas.height);
 				this.thumbdata = ImageFile.canvas.toDataURL("image/jpeg", Config.thumbnailQuality); // somewhat slow
 
-				URL.revokeObjectURL(img.src);
-				img = null;
-
 				resolve();
 			}
+
+			img.onerror = reject;
 
 			if (this.thumbStart && this.thumbEnd)
 				img.src = URL.createObjectURL(this.file.slice(this.thumbStart, this.thumbEnd));
 			else
 				img.src = URL.createObjectURL(this.file); // slow
+		}).finally(() => {
+			URL.revokeObjectURL(img.src);
+			img.src = ""; // stop the browser from loading/keeping pixels
+			img.onload = null; // kill closures
+			img.onerror = null;
+			img = null; // GC hint
 		});
 	}
 }
