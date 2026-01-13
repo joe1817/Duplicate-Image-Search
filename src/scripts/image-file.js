@@ -129,7 +129,6 @@ class ImageFile {
 		} finally {
 			reader.onload = null;
 			reader.onerror = null;
-			reader = null;
 		}
 
 		let lo, hi;
@@ -168,7 +167,7 @@ class ImageFile {
 			}
 			i+=len-2;
 		}
-		if (lo && hi) {
+		if (lo && hi && this.height && this.width) {
 			console.log("thumbnail read: " + this.file.name);
 			this.thumbStart = lo;
 			this.thumbEnd   = hi;
@@ -301,10 +300,11 @@ class ImageFile {
 				img.src = URL.createObjectURL(this.file); // slow
 		}).finally(() => {
 			URL.revokeObjectURL(img.src);
-			img.src = ""; // stop the browser from loading/keeping pixels
-			img.onload = null; // kill closures
+			 // kill closures
+			img.onload = null;
 			img.onerror = null;
-			img = null; // GC hint
+			img.src = ""; // stop the browser from loading/keeping pixels
+			img = null;   // GC hint
 		});
 	}
 }
