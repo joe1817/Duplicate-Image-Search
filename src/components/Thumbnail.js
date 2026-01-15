@@ -3,7 +3,7 @@ const Thumbnail = {
 
 	template: `
 <div>
-	<img ref="thumb" class="cluster-img hidden" :title="ifile.relpath" draggable="false">
+	<canvas ref="thumb" class="cluster-img hidden" :title="ifile.relpath" draggable="false"></canvas>
 	<div ref="dims" class="image-dims">{{ ifile.width }}×{{ ifile.height }}</div>
 </div>
 	`,
