@@ -17,7 +17,6 @@ class ImageFile {
 
 		ImageFile.canvasDim = ImageFile.blockDim * ImageFile.cellDim; // Images will be loaded as squares with this side length
 
-		ImageFile.img     = new Image();
 		ImageFile.canvas  = document.createElement("canvas");
 		ImageFile.context = ImageFile.canvas.getContext("2d", { willReadFrequently: true });
 
@@ -56,58 +55,37 @@ class ImageFile {
 	}
 
 	async load(fastRead, exactMatch) {
-		try {
-			if (exactMatch || !fastRead || this.type != "jpeg") {
-				throw Error();
-			}
-
+		if (!exactMatch && fastRead && this.type === "jpeg") {
 			const data = await this.readThumbnail();
-			if (data == null) {
-				//this.load_file(resolve, reject);
-				throw Error();
-			} else {
-				await new Promise((resolve, reject) => {
-					ImageFile.img.onload = () => {
-						URL.revokeObjectURL(ImageFile.img.src);
-						resolve()
-					};
-					ImageFile.img.onerror = () => {
-						URL.revokeObjectURL(ImageFile.img.src);
-						reject();
-					};
-					ImageFile.img.src = URL.createObjectURL(data);
-				});
-				this.hash = ImageFile.getHash();
+			if (data) {
+				const bitmap = await createImageBitmap(data);
+				try {
+					this.hash = ImageFile.getHash(bitmap);
+				} finally {
+					bitmap.close();
+				}
+				return;
 			}
+		}
 
-		} catch (error) {
+		if (exactMatch) {
+			const arrayBuffer = await this.file.arrayBuffer();
+			const hashBuffer = await crypto.subtle.digest("SHA-256", arrayBuffer);
+			const hashArray = Array.from(new Uint8Array(hashBuffer));
+			const hash = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+			this.hash = hash;
+			return;
 
-			if (exactMatch) {
-				const arrayBuffer = await this.file.arrayBuffer();
-				const hashBuffer = await crypto.subtle.digest("SHA-256", arrayBuffer);
-				const hashArray = Array.from(new Uint8Array(hashBuffer));
-				const hash = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
-				this.hash = hash;
-
-			} else {
-
-				await new Promise((resolve, reject) => {
-					ImageFile.img.onload = () => {
-						URL.revokeObjectURL(ImageFile.img.src);
-						this.hash   = ImageFile.getHash();
-						this.width  = ImageFile.img.width;
-						this.height = ImageFile.img.height;
-						resolve();
-					}
-
-					ImageFile.img.onerror = () => {
-						URL.revokeObjectURL(ImageFile.img.src);
-						this.valid = false;
-						reject();
-					}
-
-					ImageFile.img.src = URL.createObjectURL(this.file); // slow
-				});
+		} else {
+			const bitmap = await createImageBitmap(this.file);
+			try {
+				this.width  = bitmap.width;
+				this.height = bitmap.height;
+				this.hash = ImageFile.getHash(bitmap);
+			} catch (error) {
+				this.valid = false;
+			} finally {
+				bitmap.close();
 			}
 		}
 	}
@@ -177,8 +155,8 @@ class ImageFile {
 		}
 	}
 
-	static getHash() {
-		ImageFile.context.drawImage(ImageFile.img, 0, 0, ImageFile.canvasDim, ImageFile.canvasDim); // very slow
+	static getHash(bitmap) {
+		ImageFile.context.drawImage(bitmap, 0, 0, ImageFile.canvasDim, ImageFile.canvasDim); // very slow
 		let data = ImageFile.context.getImageData(0, 0, ImageFile.canvasDim, ImageFile.canvasDim).data; // slow
 		data = ImageFile.rgbaToGreyscale(data);
 		data = ImageFile.boxBlur(data, ImageFile.canvasDim, ImageFile.canvasDim, ImageFile.cellDim, ImageFile.cellDim);
