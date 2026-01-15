@@ -160,6 +160,9 @@ class ImageFile {
 	}
 
 	static getHash(bitmap) {
+		ImageFile.canvas.width = ImageFile.canvasDim;
+		ImageFile.canvas.height = ImageFile.canvasDim;
+
 		ImageFile.context.clearRect(0, 0, ImageFile.canvasDim, ImageFile.canvasDim); // prevent alpha-blending problems
 
 		ImageFile.context.drawImage(bitmap, 0, 0, ImageFile.canvasDim, ImageFile.canvasDim);
