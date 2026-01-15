@@ -5,6 +5,8 @@ class ImageFile {
 	static ratioTolerancePct = 10;   // Image aspect ratios may differ by up to 10% before comparing
 	static rejectLumaDist    = 400;  // Images will be considered distinct if there luma distance is outside this threshold
 
+	static RESET_THRESHOLD   = 100;  // Reset the canvas after this many images
+
 	static {
 		// Images will be treated as grids of "blocks", each containing "cells". Each cell is a pixel.
 		ImageFile.iconArea = ImageFile.iconDim ** 2;
@@ -24,6 +26,8 @@ class ImageFile {
 		ImageFile.canvas.height = ImageFile.canvasDim;
 
 		ImageFile.rejectLumaDist *= ImageFile.iconArea;
+
+		ImageFile.imagesProcessed = 0;
 	}
 
 	constructor(file) {
@@ -156,12 +160,20 @@ class ImageFile {
 	}
 
 	static getHash(bitmap) {
-		ImageFile.context.drawImage(bitmap, 0, 0, ImageFile.canvasDim, ImageFile.canvasDim); // very slow
-		let data = ImageFile.context.getImageData(0, 0, ImageFile.canvasDim, ImageFile.canvasDim).data; // slow
+		ImageFile.context.clearRect(0, 0, ImageFile.canvasDim, ImageFile.canvasDim); // prevent alpha-blending problems
+
+		ImageFile.context.drawImage(bitmap, 0, 0, ImageFile.canvasDim, ImageFile.canvasDim);
+		let data = ImageFile.context.getImageData(0, 0, ImageFile.canvasDim, ImageFile.canvasDim).data;
 		data = ImageFile.rgbaToGreyscale(data);
 		data = ImageFile.boxBlur(data, ImageFile.canvasDim, ImageFile.canvasDim, ImageFile.cellDim, ImageFile.cellDim);
 		data = ImageFile.boxBlur(data, ImageFile.blockDim, ImageFile.blockDim, 3, 2);
 		data = ImageFile.normalize(data);
+
+		ImageFile.imagesProcessed++;
+        if (ImageFile.imagesProcessed % ImageFile.RESET_THRESHOLD === 0 || bitmap.width > 6000 || bitmap.height > 6000) {
+            ImageFile.refreshCanvas();
+        }
+
 		return data;
 	}
 
@@ -284,6 +296,22 @@ class ImageFile {
 			img.src = ""; // stop the browser from loading/keeping pixels
 			img = null;   // GC hint
 		});
+	}
+
+	static refreshCanvas() {
+		// Setting width/height to their own values clears the state,
+		// but setting them to 0 then back to the target size
+		// forces a full memory purge in most browser engines.
+		const oldWidth = ImageFile.canvas.width;
+		const oldHeight = ImageFile.canvas.height;
+
+		ImageFile.canvas.width = 0;
+		ImageFile.canvas.height = 0;
+
+		ImageFile.canvas.width = oldWidth;
+		ImageFile.canvas.height = oldHeight;
+
+		console.log("canvas context reset");
 	}
 }
 
