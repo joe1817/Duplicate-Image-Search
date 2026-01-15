@@ -264,44 +264,46 @@ class ImageFile {
 	}
 
 	async createThumbnail() {
-		let img = new Image();
+		const blob = this.thumbStart && this.thumbEnd ? this.file.slice(this.thumbStart, this.thumbEnd) : this.file;
 
-		return new Promise( (resolve, reject) => {
-			img.onload = () => {
-				if (this.width == null) {
-					this.width  = img.width;
-					this.height = img.height;
-				}
-				if (img.width >= img.height) {
-					ImageFile.canvas.height = Config.thumbnailMaxDim * Config.thumbnailOversample;
-					ImageFile.canvas.width = Math.floor(img.width * ImageFile.canvas.height / img.height);
-				} else {
-					ImageFile.canvas.width = Config.thumbnailMaxDim * Config.thumbnailOversample;
-					ImageFile.canvas.height = Math.floor(img.height * ImageFile.canvas.width / img.width);
-				}
-				ImageFile.context.drawImage(img, 0, 0, ImageFile.canvas.width, ImageFile.canvas.height);
-				this.thumbdata = ImageFile.canvas.toDataURL("image/jpeg", Config.thumbnailQuality); // somewhat slow
+		let resizeWidth, resizeHeight;
+		if (this.width >= this.height) {
+			resizeWidth = Config.thumbnailMaxDim * Config.thumbnailOversample;
+			resizeHeight = Math.floor(this.height * resizeWidth / this.width);
+		} else {
+			resizeHeight = Config.thumbnailMaxDim * Config.thumbnailOversample;
+			resizeWidth = Math.floor(this.width * resizeHeight / this.height);
+		}
 
-				resolve();
-			}
-
-			img.onerror = reject;
-
-			if (this.thumbStart && this.thumbEnd)
-				img.src = URL.createObjectURL(this.file.slice(this.thumbStart, this.thumbEnd));
-			else
-				img.src = URL.createObjectURL(this.file); // slow
-		}).finally(() => {
-			URL.revokeObjectURL(img.src);
-			 // kill closures
-			img.onload = null;
-			img.onerror = null;
-			img.src = ""; // stop the browser from loading/keeping pixels
-			img = null;   // GC hint
+		// resizing inside createImageBitmap is slower than in drawImage but it makes much better thumbnails
+		const bitmap = await createImageBitmap(blob, {
+			resizeWidth: resizeWidth,
+			resizeHeight: resizeHeight,
+			resizeQuality: "medium"
 		});
+
+		try {
+			ImageFile.canvas.width = resizeWidth;
+			ImageFile.canvas.height = resizeHeight;
+
+			ImageFile.context.clearRect(0, 0, resizeWidth, resizeHeight);
+
+			//ImageFile.context.drawImage(bitmap, 0, 0, resizeWidth, resizeHeight);
+			ImageFile.context.drawImage(bitmap, 0, 0);
+			this.thumbdata = ImageFile.canvas.toDataURL("image/jpeg", Config.thumbnailQuality); // TODO toObjectURL is faster and uses less memory
+
+			ImageFile.imagesProcessed++;
+			if (ImageFile.imagesProcessed % ImageFile.RESET_THRESHOLD === 0) {
+				ImageFile.refreshCanvas();
+			}
+		} finally {
+			bitmap.close();
+		}
 	}
 
 	static refreshCanvas() {
+		// clears GPU command buffer and other metadata, and helps compact memory
+
 		// Setting width/height to their own values clears the state,
 		// but setting them to 0 then back to the target size
 		// forces a full memory purge in most browser engines.
