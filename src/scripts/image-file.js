@@ -260,57 +260,38 @@ class ImageFile {
 		}
 	}
 
-	async createThumbnail(img) {
+	async createThumbnail(canvas) {
+		const dpr = window.devicePixelRatio || 1;
+
 		const blob = this.thumbStart && this.thumbEnd ? this.file.slice(this.thumbStart, this.thumbEnd) : this.file;
 
-		let resizeWidth, resizeHeight;
+		let width, height;
 		if (this.width >= this.height) {
-			resizeWidth = Config.thumbnailMaxDim * Config.thumbnailOversample;
-			resizeHeight = Math.floor(this.height * resizeWidth / this.width);
+			width = Config.thumbnailMaxDim;
+			height = Math.floor(this.height * width / this.width);
 		} else {
-			resizeHeight = Config.thumbnailMaxDim * Config.thumbnailOversample;
-			resizeWidth = Math.floor(this.width * resizeHeight / this.height);
+			height = Config.thumbnailMaxDim;
+			width = Math.floor(this.width * height / this.height);
 		}
 
-		// resizing inside createImageBitmap is slower than in drawImage but it makes much better thumbnails
+		// resizing inside createImageBitmap is slightly slower than in drawImage
+		// but it makes much better thumbnails, even at "low" quality
 		const bitmap = await createImageBitmap(blob, {
-			resizeWidth: resizeWidth,
-			resizeHeight: resizeHeight,
-			resizeQuality: "high"
+			resizeWidth: width * dpr,
+			resizeHeight: height * dpr,
+			resizeQuality: "low"
 		});
 
-		ImageFile.canvas.width = resizeWidth;
-		ImageFile.canvas.height = resizeHeight;
+		canvas.width = width * dpr;
+		canvas.height = height * dpr;
 
-		ImageFile.context.clearRect(0, 0, resizeWidth, resizeHeight);
+		canvas.style.width = width + "px";
+		canvas.style.height = height + "px";
 
-		//ImageFile.context.drawImage(bitmap, 0, 0, resizeWidth, resizeHeight);
-		ImageFile.context.drawImage(bitmap, 0, 0);
+		const ctx = canvas.getContext("2d");
+		//ctx.drawImage(bitmap, 0, 0,  width * dpr, height * dpr);
+		ctx.drawImage(bitmap, 0, 0);
 		bitmap.close();
-
-		const thumbBlob = await ImageFile.canvas.convertToBlob({ type: "image/jpeg", quality: Config.thumbnailQuality });
-		const url = URL.createObjectURL(thumbBlob);
-
-		img.onload = () => {
-			URL.revokeObjectURL(url);
-			img.onload = null;
-			img.onerror = null;
-		}
-
-		img.onerror = () => {
-			URL.revokeObjectURL(url);
-			img.onload = null;
-			img.onerror = null;
-		}
-
-		img.width = resizeWidth / Config.thumbnailOversample;
-		img.height = resizeHeight / Config.thumbnailOversample;
-		img.src = url;
-
-		ImageFile.imagesProcessed++;
-		if (ImageFile.imagesProcessed % ImageFile.RESET_THRESHOLD === 0) {
-			ImageFile.refreshCanvas();
-		}
 	}
 
 	static refreshCanvas() {
