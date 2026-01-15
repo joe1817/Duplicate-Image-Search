@@ -19,11 +19,8 @@ class ImageFile {
 
 		ImageFile.canvasDim = ImageFile.blockDim * ImageFile.cellDim; // Images will be loaded as squares with this side length
 
-		ImageFile.canvas  = document.createElement("canvas");
+		ImageFile.canvas  = new OffscreenCanvas(ImageFile.canvasDim, ImageFile.canvasDim);
 		ImageFile.context = ImageFile.canvas.getContext("2d", { willReadFrequently: true });
-
-		ImageFile.canvas.width  = ImageFile.canvasDim;
-		ImageFile.canvas.height = ImageFile.canvasDim;
 
 		ImageFile.rejectLumaDist *= ImageFile.iconArea;
 
@@ -263,7 +260,7 @@ class ImageFile {
 		}
 	}
 
-	async createThumbnail() {
+	async createThumbnail(img) {
 		const blob = this.thumbStart && this.thumbEnd ? this.file.slice(this.thumbStart, this.thumbEnd) : this.file;
 
 		let resizeWidth, resizeHeight;
@@ -279,25 +276,40 @@ class ImageFile {
 		const bitmap = await createImageBitmap(blob, {
 			resizeWidth: resizeWidth,
 			resizeHeight: resizeHeight,
-			resizeQuality: "medium"
+			resizeQuality: "high"
 		});
 
-		try {
-			ImageFile.canvas.width = resizeWidth;
-			ImageFile.canvas.height = resizeHeight;
+		ImageFile.canvas.width = resizeWidth;
+		ImageFile.canvas.height = resizeHeight;
 
-			ImageFile.context.clearRect(0, 0, resizeWidth, resizeHeight);
+		ImageFile.context.clearRect(0, 0, resizeWidth, resizeHeight);
 
-			//ImageFile.context.drawImage(bitmap, 0, 0, resizeWidth, resizeHeight);
-			ImageFile.context.drawImage(bitmap, 0, 0);
-			this.thumbdata = ImageFile.canvas.toDataURL("image/jpeg", Config.thumbnailQuality); // TODO toObjectURL is faster and uses less memory
+		//ImageFile.context.drawImage(bitmap, 0, 0, resizeWidth, resizeHeight);
+		ImageFile.context.drawImage(bitmap, 0, 0);
+		bitmap.close();
 
-			ImageFile.imagesProcessed++;
-			if (ImageFile.imagesProcessed % ImageFile.RESET_THRESHOLD === 0) {
-				ImageFile.refreshCanvas();
-			}
-		} finally {
-			bitmap.close();
+		const thumbBlob = await ImageFile.canvas.convertToBlob({ type: "image/jpeg", quality: Config.thumbnailQuality });
+		const url = URL.createObjectURL(thumbBlob);
+
+		img.onload = () => {
+			URL.revokeObjectURL(url);
+			img.onload = null;
+			img.onerror = null;
+		}
+
+		img.onerror = () => {
+			URL.revokeObjectURL(url);
+			img.onload = null;
+			img.onerror = null;
+		}
+
+		img.width = resizeWidth / Config.thumbnailOversample;
+		img.height = resizeHeight / Config.thumbnailOversample;
+		img.src = url;
+
+		ImageFile.imagesProcessed++;
+		if (ImageFile.imagesProcessed % ImageFile.RESET_THRESHOLD === 0) {
+			ImageFile.refreshCanvas();
 		}
 	}
 

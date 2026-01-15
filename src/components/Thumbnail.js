@@ -4,7 +4,7 @@ const Thumbnail = {
 	template: `
 <div>
 	<img ref="thumb" class="cluster-img hidden" :title="ifile.relpath" draggable="false">
-	<div ref="dims" class="image-dims"></div>
+	<div ref="dims" class="image-dims">{{ ifile.width }}×{{ ifile.height }}</div>
 </div>
 	`,
 
@@ -15,16 +15,8 @@ const Thumbnail = {
 
 		thumb.ondragstart = function(event) { return false; };
 
-		this.ifile.createThumbnail().then(() => {
-			dims.textContent = "".concat(this.ifile.width, "×", this.ifile.height);
-			thumb.classList.add("hidden");
-			thumb.src = this.ifile.thumbdata;
-			thumb.onload = () => {
-				thumb.width = thumb.width / Config.thumbnailOversample;
-				thumb.height = thumb.height / Config.thumbnailOversample;
-				thumb.classList.remove("hidden");
-				this.ifile.thumbdata = null;
-			}
+		this.ifile.createThumbnail(thumb).then(() => {
+			thumb.classList.remove("hidden");
 		});
 	}
 }
