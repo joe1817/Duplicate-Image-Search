@@ -18,14 +18,14 @@ const ResultsPage = {
 			</div>
 		</div>
 
-		<div class="progress">
-			<div :class="['progress-bar', {hidden: endedState}]">
-				<div ref="progressBar" id="progress-bar-inner"></div>
+		<div id="header-content">
+			<div class="progress">
+				<div :class="['progress-bar', {hidden: endedState}]">
+					<div ref="progressBar" id="progress-bar-inner"></div>
+				</div>
+				<div class="progress-text">{{ progressText }}</div>
 			</div>
-			<div class="progress-text">{{ progressText }}</div>
-		</div>
 
-		<div class="file-lists">
 			<div>
 				<span v-show="!textareaOn"><span class="text-button noselect" @click="openList">list files</span></span>
 				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><input type="checkbox" id="hide-option" v-model="autoHideState"><label class="noselect" for="hide-option">Auto Hide Selected Clusters</label></span>
@@ -35,6 +35,7 @@ const ResultsPage = {
 				<span v-show="textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><input type="checkbox" id="show-high-option" v-model="showHighState"><label class="noselect" for="show-high-option">Show Highlighted Only</label></span>
 				<span v-show="textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><input type="checkbox" id="script-option" v-model="scriptState"><label class="noselect" for="script-option">Deletion Script</label></span>
 			</div>
+
 			<textarea class="textarea" ref="textarea" v-model="textareaText" v-show="textareaOn" spellcheck="false" readonly></textarea>
 		</div>
 	</div>
