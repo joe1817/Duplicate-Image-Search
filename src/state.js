@@ -95,14 +95,12 @@ const State = {
 				});
 			} else if (state.exactMatch) {
 				// only examine images with non-unique file sizes
-				const uniqueSizes = new Set();
+				const counts = {};
 				Array.from(validFiles).forEach(ifile => {
-					if (uniqueSizes.has(ifile.file.size)) {
-						uniqueSizes.delete(ifile.file.size);
-					} else {
-						uniqueSizes.add(ifile.file.size);
-					}
+					const val = ifile.file.size;
+					counts[val] = (counts[val] || 0) + 1;
 				});
+				const uniqueSizes = new Set(Object.keys(counts).filter(key => counts[key] === 1));
 				Array.from(validFiles).forEach(ifile => {
 					if (!uniqueSizes.has(ifile.file.size)) {
 						candidates.push(ifile);
