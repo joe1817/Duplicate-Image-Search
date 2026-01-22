@@ -474,6 +474,8 @@ textarea {
 
 .cluster.collapsed {
 	width: auto;
+	border: 1px solid #333;
+	cursor: pointer;
 }
 
 .cluster-num {

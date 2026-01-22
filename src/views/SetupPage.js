@@ -110,7 +110,7 @@ const SetupPage = {
 			event.preventDefault();
 		},
 
-		dropHandler(event) {
+		async dropHandler(event) {
 			event.preventDefault();
 
 			this.updateUISearchInit();
@@ -118,41 +118,47 @@ const SetupPage = {
 			const items = event.dataTransfer.items;
 			const files = [];
 
-			let count = items.length;
-
-			const onFile = (file) => {
-				files.push(file);
-				if (!--count) this.$store.dispatch("startSearch", files);
-			}
-			const onEntries = (entries) => {
-				count += entries.length;
-				for (const entry of entries) {
-					scanFiles(entry);
-				}
-				if (!--count) this.$store.dispatch("startSearch", files);
-			};
-			const onErr = (err) => {
-				console.log(err);
-				if (!--count) this.$store.dispatch("startSearch", files);
-			}
-
-			// can scan subdriectories with FileSystemDirectoryEntry, but not with File
-			const scanFiles = (entry) => {
+			const getAllFileEntries = async (entry) => {
 				if (entry.isFile) {
-					entry.file(onFile, onErr); // TODO for some reason, this will sometimes throw an EncodingError on Edge when run locally
-				} else {
-					entry.createReader().readEntries(onEntries, onErr);
-				}
-			}
+					return new Promise((resolve) => {
+						entry.file((file) => resolve([file]));
+					});
+				} else if (entry.isDirectory) {
+					const reader = entry.createReader();
+					const allEntries = [];
 
+					const readBatch = async () => {
+						const entries = await new Promise((resolve, reject) => {
+							reader.readEntries(resolve, reject);
+						});
+
+						if (entries.length > 0) {
+							allEntries.push(...entries);
+							return readBatch(); // Keep reading until empty
+						}
+					};
+
+					await readBatch();
+
+					const filePromises = allEntries.map(childEntry => getAllFileEntries(childEntry));
+					const results = await Promise.all(filePromises);
+					return results.flat();
+				}
+				return [];
+			};
+
+			const entryPromises = [];
 			for (const item of items) {
 				const entry = item.webkitGetAsEntry();
 				if (entry) {
-					scanFiles(entry);
-				} else {
-					if (!--count) this.$store.dispatch("startSearch", files);
+					entryPromises.push(getAllFileEntries(entry));
 				}
 			}
+
+			const allFilesNested = await Promise.all(entryPromises);
+			const flatFiles = allFilesNested.flat();
+
+			this.$store.dispatch("startSearch", flatFiles);
 		},
 	},
 
