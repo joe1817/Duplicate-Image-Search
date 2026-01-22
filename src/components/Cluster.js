@@ -1,3 +1,61 @@
+function simplePathDiff(path1, path2) {
+    const getParts = (p) => {
+        const lastSlash = p.lastIndexOf("/");
+        if (lastSlash === -1) return { dirs: [], file: p };
+        return {
+            dirs: p.substring(0, lastSlash).split("/"),
+            file: p.substring(lastSlash + 1)
+        };
+    };
+
+    const p1 = getParts(path1);
+    const p2 = getParts(path2);
+
+    // Find the first index where the directory tokens differ
+    let firstDiffIdx = -1;
+    const maxDirLen = Math.max(p1.dirs.length, p2.dirs.length);
+
+    for (let i = 0; i < maxDirLen; i++) {
+        if (p1.dirs[i] !== p2.dirs[i]) {
+            firstDiffIdx = i;
+            break;
+        }
+    }
+
+    // Wrap directory components from the first difference to the end
+    const getDirHTML = (dirs, startIdx) => {
+        if (startIdx === -1) return dirs.join("/");
+
+        const stable = dirs.slice(0, startIdx).join("/");
+        const different = dirs.slice(startIdx).join("/");
+
+        if (startIdx === 0) {
+            return `<u>${different}</u>`;
+        }
+
+        return different ? `${stable}/<u>${different}</u>` : stable;
+    };
+
+    // Filename logic (Character diff)
+    const getFileHTML = (f1, f2) => {
+        return f1.split("").map((char, i) => {
+            return char !== f2[i] ? `<u>${char}</u>` : char;
+        }).join("");
+    };
+
+    const buildPath = (dirHTML, fileHTML, originalPath) => {
+		console.log("dirHTML " + dirHTML);
+		console.log("fileHTML " + fileHTML);
+        if (!originalPath.includes("/")) return fileHTML;
+        return `${dirHTML}/${fileHTML}`;
+    };
+
+    return {
+        path1: buildPath(getDirHTML(p1.dirs, firstDiffIdx), getFileHTML(p1.file, p2.file), path1),
+        path2: buildPath(getDirHTML(p2.dirs, firstDiffIdx), getFileHTML(p2.file, p1.file), path2)
+    };
+}
+
 const Cluster = {
 	props: ["cluster", "clusterIndex"],
 
@@ -43,6 +101,16 @@ const Cluster = {
 		return {
 			highlightedCount : 0,
 			direction        : null,
+		}
+	},
+
+	mounted() {
+		if (this.$refs.info.length === 2) {
+			const path_span1 = this.$refs.info[0].children[2];
+			const path_span2 = this.$refs.info[1].children[2];
+			const results = simplePathDiff(path_span1.textContent, path_span2.textContent);
+			path_span1.innerHTML = results.path1;
+			path_span2.innerHTML = results.path2;
 		}
 	},
 

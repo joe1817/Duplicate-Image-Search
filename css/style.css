@@ -567,6 +567,16 @@ img {
 	width: calc(100% - 160px);
 }
 
+u {
+	color: inherit;
+    text-decoration-color: #F44;
+}
+
+.highlighted u {
+	color: inherit;
+    text-decoration-color: #333;
+}
+
 .hovered {
 	background-color: #555;
 }
