@@ -1,59 +1,49 @@
-function simplePathDiff(path1, path2) {
-    const getParts = (p) => {
-        const lastSlash = p.lastIndexOf("/");
-        if (lastSlash === -1) return { dirs: [], file: p };
-        return {
-            dirs: p.substring(0, lastSlash).split("/"),
-            file: p.substring(lastSlash + 1)
-        };
-    };
-
-    const p1 = getParts(path1);
-    const p2 = getParts(path2);
-
-    // Find the first index where the directory tokens differ
-    let firstDiffIdx = -1;
-    const maxDirLen = Math.max(p1.dirs.length, p2.dirs.length);
-
-    for (let i = 0; i < maxDirLen; i++) {
-        if (p1.dirs[i] !== p2.dirs[i]) {
-            firstDiffIdx = i;
-            break;
-        }
+function getMixedTokens(path) {
+    const lastSlash = path.lastIndexOf("/");
+    if (lastSlash === -1) {
+        return path.split("").map((char) => ({ val: char, type: "file" }));
     }
 
-    // Wrap directory components from the first difference to the end
-    const getDirHTML = (dirs, startIdx) => {
-        if (startIdx === -1) return dirs.join("/");
+    const dirPart = path.substring(0, lastSlash);
+    const filePart = path.substring(lastSlash + 1);
 
-        const stable = dirs.slice(0, startIdx).join("/");
-        const different = dirs.slice(startIdx).join("/");
+    const dirTokens = dirPart.split("/").map((d) => ({ val: d, type: "dir" }));
+    const fileTokens = filePart.split("").map((c) => ({ val: c, type: "file" }));
 
-        if (startIdx === 0) {
-            return `<u>${different}</u>`;
-        }
+    // slash indicates the change from dir components to filename components
+    const tokens = [...dirTokens, { val: "/", type: "sep" }, ...fileTokens];
+	return tokens;
+}
 
-        return different ? `${stable}/<u>${different}</u>` : stable;
-    };
+function pathDiff(path1, path2) {
+    const tokens1 = getMixedTokens(path1);
+    const tokens2 = getMixedTokens(path2);
 
-    // Filename logic (Character diff)
-    const getFileHTML = (f1, f2) => {
-        return f1.split("").map((char, i) => {
-            return char !== f2[i] ? `<u>${char}</u>` : char;
-        }).join("");
-    };
+    const diff = Diff.diffArrays(tokens1, tokens2, {
+        comparator: (a, b) => a.val === b.val
+    });
 
-    const buildPath = (dirHTML, fileHTML, originalPath) => {
-		console.log("dirHTML " + dirHTML);
-		console.log("fileHTML " + fileHTML);
-        if (!originalPath.includes("/")) return fileHTML;
-        return `${dirHTML}/${fileHTML}`;
-    };
+    let htmlOutput = "";
+	let sep = path1.lastIndexOf("/") !== -1 ? "/" : "";
 
-    return {
-        path1: buildPath(getDirHTML(p1.dirs, firstDiffIdx), getFileHTML(p1.file, p2.file), path1),
-        path2: buildPath(getDirHTML(p2.dirs, firstDiffIdx), getFileHTML(p2.file, p1.file), path2)
-    };
+    diff.forEach((part, index) => {
+		if (!part.added) {
+			const isDiff = part.removed;
+
+			part.value.forEach((token, i) => {
+				let content = token.val;
+
+				if (content === "/") {
+					sep = "";
+				} else {
+					const wrappedContent = isDiff ? `<u${sep === "" ? " class='filenameDiff'" : ""}>${content}</u>` : content;
+					htmlOutput += (wrappedContent + sep);
+				}
+			});
+		}
+    });
+
+    return htmlOutput;
 }
 
 const Cluster = {
@@ -87,6 +77,7 @@ const Cluster = {
 				@mouseenter="mouseenterHandler($event, clusterIndex, fileIndex)"
 				@mouseleave ="mouseleaveHandler($event, clusterIndex, fileIndex)"
 				@mousedown="mousedownHandler($event, clusterIndex, fileIndex)"
+				:title="ifile.relpath"
 			>
 				<span ref="size" :class="['img-info-part', 'size', {'best-part': (parseInt(ifile.file.size/1024) == bestSize) }]">{{ parseInt(ifile.file.size/1024) }}</span>
 				<span ref="date" :class="['img-info-part', 'date', {'best-part': (formatDate(new Date(ifile.file.lastModified)) == bestDate) }]">{{ formatDate(new Date(ifile.file.lastModified)) }}</span>
@@ -100,18 +91,21 @@ const Cluster = {
 	data() {
 		return {
 			highlightedCount : 0,
-			direction        : null,
+			direction		: null,
 		}
 	},
 
 	mounted() {
-		if (this.$refs.info.length === 2) {
-			const path_span1 = this.$refs.info[0].children[2];
-			const path_span2 = this.$refs.info[1].children[2];
-			const results = simplePathDiff(path_span1.textContent, path_span2.textContent);
-			path_span1.innerHTML = results.path1;
-			path_span2.innerHTML = results.path2;
-		}
+		const path_span1 = this.$refs.info[0].children[2];
+		const path_span2 = this.$refs.info[1].children[2];
+		path_span1.innerHTML = pathDiff(path_span1.textContent, path_span2.textContent);
+		path_span2.innerHTML = pathDiff(path_span2.textContent, path_span1.textContent);
+	},
+
+	updated() {
+		const path_span1 = this.$refs.info[0].children[2];
+		const path_span2 = this.$refs.info.at(-1).children[2];
+		path_span2.innerHTML = pathDiff(path_span2.textContent, path_span1.textContent);
 	},
 
 	methods: {
@@ -120,11 +114,6 @@ const Cluster = {
 		},
 
 		reset() {
-			/*
-			if (this.direction && this.highlightedCount && ResultsPageNonReactiveSettings.autoHideState) {
-				this.toggleCluster();
-			}
-			*/
 			this.direction = null;
 		},
 

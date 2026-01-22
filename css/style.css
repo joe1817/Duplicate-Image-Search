@@ -572,6 +572,16 @@ u {
     text-decoration-color: #F44;
 }
 
+/*
+u.filenameDiff {
+	text-decoration: underline;
+    text-decoration-color: #F44;
+    text-decoration-style: double;
+	text-underline-offset: 4px;
+	text-decoration-skip-ink: none;
+}
+*/
+
 .highlighted u {
 	color: inherit;
     text-decoration-color: #333;
