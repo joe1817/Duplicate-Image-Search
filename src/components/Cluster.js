@@ -179,7 +179,7 @@ const Cluster = {
 		},
 
 		toggleCluster() {
-			this.$refs.clusterContent.classList.toggle("hidden");
+			this.$el.classList.toggle("collapsed");
 		}
 	},
 

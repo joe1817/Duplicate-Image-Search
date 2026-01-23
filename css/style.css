@@ -460,8 +460,9 @@ textarea {
 #clusters {
 	margin-top: 180px;
 	display: flex;
-	flex-direction: column;
-	gap: 30px;
+	flex-direction: row;
+	row-gap: 30px;
+	flex-wrap: wrap;
 }
 
 .cluster {
@@ -471,11 +472,15 @@ textarea {
 	gap: 4px;
 }
 
+.cluster.collapsed {
+	width: auto;
+}
+
 .cluster-num {
 	font-family: "Roboto", serif;
 	font-size: 1.6em;
 	color: #CCC;
-	padding: 0px 8px;
+	padding: 5px 15px;
 	text-align: center;
 	cursor: pointer;
 }
@@ -501,6 +506,10 @@ textarea {
 	display: flex;
 	flex-direction: column;
 	gap: 4px;
+}
+
+.cluster.collapsed .cluster-content {
+	display: none;
 }
 
 .cluster-imgs {
