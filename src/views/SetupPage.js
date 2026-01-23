@@ -7,15 +7,17 @@ const SetupPage = {
 
 	<div class="options">
 		<div id="options-start" ref="optionsStart" class="option-content">
-			<input type="file" ref="inputFile" class="hidden" accept="image/*" @change="setMustMatchFile($event)" @cancel="reloadPage">
-			<input type="file" ref="inputDir"  class="hidden" accept="image/*" webkitdirectory multiple @change="onDirChangeHandler" @cancel="reloadPage">
 			<div class="button-wrapper">
+				<input type="file" ref="inputFile" class="hidden" accept="image/*" @change="setMustMatchFile($event)" @cancel="reloadPage">
+				<input type="file" ref="inputDir"  class="hidden" accept="image/*" webkitdirectory multiple @change="onDirChange($event)" @cancel="reloadPage">
+
 				<div>
 					<span id="optional" class="tooltip left noselect" data-tip="This specifies a file to match against, meaning the search will only find images that are similar to this one. Ignore this option to find all groups of similar images in the selected folder.">Optional: </span>
-					<div id="button-file" class="button wide tall noselect" @click="filePicker($event)">Select File</div>
+					<div id="button-file" class="button wide tall noselect" @click="onFilePickerClick">Select File</div>
 					<span id="selected-file" v-show="$store.state.mustMatch"><span class="x" @click="removeMustMatchFile">×</span><span ref="filePath"></span></span>
 				</div>
-				<div><div id="button-dir" class="button wide tall noselect" @click="dirPicker($event)">Select Folder</div></div>
+
+				<div><div id="button-dir" class="button wide tall noselect" @click="onDirPickerClick">Select Folder</div></div>
 			</div>
 
 			<div class="checkboxes">
@@ -68,15 +70,6 @@ const SetupPage = {
 			location.reload()
 		},
 
-		filePicker(event) {
-			this.$refs.inputFile.click();
-		},
-
-		dirPicker(event) {
-			this.updateUISearchInit();
-			this.$refs.inputDir.click();
-		},
-
 		updateUISearchInit() {
 			// start after the file picker is displayed
 			setTimeout(() => {
@@ -98,67 +91,43 @@ const SetupPage = {
 			this.$store.commit("SET_MUST_MATCH_FILE", null);
 		},
 
-		onDirChangeHandler(event) {
-			try {
-				this.$store.dispatch("startSearch", event.target.files);
-			} finally {
-				event.target.value = "";
-			}
-		},
-
 		dragOverHandler(event) {
 			event.preventDefault();
 		},
 
 		async dropHandler(event) {
+			const provider = new UnifiedFileProvider();
 			event.preventDefault();
+			this.updateUISearchInit();
+			const files = await Array.fromAsync(provider.getFilesFromDrop(event));
+			this.$store.dispatch("startSearch", files);
+		},
 
+		async onDirPickerClick() {
+			const provider = new UnifiedFileProvider();
 			this.updateUISearchInit();
 
-			const items = event.dataTransfer.items;
-			const files = [];
+			// Try a modern file picker first if it's available
+			const files = await Array.fromAsync(provider.getFilesFromPicker());
 
-			const getAllFileEntries = async (entry) => {
-				if (entry.isFile) {
-					return new Promise((resolve) => {
-						entry.file((file) => resolve([file]));
-					});
-				} else if (entry.isDirectory) {
-					const reader = entry.createReader();
-					const allEntries = [];
-
-					const readBatch = async () => {
-						const entries = await new Promise((resolve, reject) => {
-							reader.readEntries(resolve, reject);
-						});
-
-						if (entries.length > 0) {
-							allEntries.push(...entries);
-							return readBatch(); // Keep reading until empty
-						}
-					};
-
-					await readBatch();
-
-					const filePromises = allEntries.map(childEntry => getAllFileEntries(childEntry));
-					const results = await Promise.all(filePromises);
-					return results.flat();
-				}
-				return [];
-			};
-
-			const entryPromises = [];
-			for (const item of items) {
-				const entry = item.webkitGetAsEntry();
-				if (entry) {
-					entryPromises.push(getAllFileEntries(entry));
-				}
+			if (files.length) {
+				this.$store.dispatch("startSearch", files);
+			} else {
+				// fall back to <input>
+				this.$refs.inputDir.click();
 			}
+		},
 
-			const allFilesNested = await Promise.all(entryPromises);
-			const flatFiles = allFilesNested.flat();
+		onFilePickerClick() {
+			this.$refs.inputFile.click();
+		},
 
-			this.$store.dispatch("startSearch", flatFiles);
+		onDirChange(event) {
+			try {
+				this.$store.dispatch("startSearch", event.target.files);
+			} finally {
+				event.target.value = "";
+			}
 		},
 	},
 
