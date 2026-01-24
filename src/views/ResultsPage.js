@@ -11,8 +11,8 @@ const ResultsPage = {
 		<div class="header-title">
 			<h1>Duplicate Image Search</h1>
 			<div class="search-buttons">
-				<div id="button-pause-search" :class="['button', 'noselect', {hidden: endedState}]" @click="togglePause">
-					{{ ($store.state.searchStatus == 'search_paused') ? 'Resume' : 'Pause' }}
+				<div id="button-pause-search" class="button noselect" v-show="isRunning || isPaused" @click="togglePause">
+					{{ isPaused ? "Resume" : "Pause" }}
 				</div>
 				<div class="button noselect" @click="reloadPage">New Search</div>
 			</div>
@@ -20,7 +20,7 @@ const ResultsPage = {
 
 		<div id="header-content">
 			<div class="progress">
-				<div :class="['progress-bar', {hidden: endedState}]">
+				<div class="progress-bar" v-show="isRunning || isPaused">
 					<div ref="progressBar" id="progress-bar-inner"></div>
 				</div>
 				<div class="progress-text">{{ progressText }}</div>
@@ -98,7 +98,7 @@ const ResultsPage = {
 		},
 
 		togglePause() {
-			this.pausedState = !this.pausedState;
+			this.isPaused = !this.isPaused;
 		},
 
 		selectHandler(ifile) {
@@ -167,15 +167,28 @@ const ResultsPage = {
 	},
 
 	computed: {
-		pausedState: {
+
+		isInitializing() {
+			return this.$store.getters.isInitializing;
+		},
+
+		isRunning() {
+			return this.$store.getters.isRunning;
+		},
+
+		isPaused: {
 			get() {
 				return this.$store.getters.isPaused;
 			},
 			set(val) {
-				if (!this.endedState) {
+				if (!this.isEnded && !this.isInitializing) {
 					this.$store.commit("SET_SEARCH_STATE", val ? "search_paused" : "search_running");
 				}
 			}
+		},
+
+		isEnded() {
+			return this.$store.getters.isEnded;
 		},
 
 		autoHideState: {
@@ -187,13 +200,9 @@ const ResultsPage = {
 			}
 		},
 
-		endedState() {
-			return this.$store.getters.isEnded;
-		},
-
 		percentDone() {
 			const n = this.$store.state.progress;
-			const t = this.$store.state.total;
+			const t = this.$store.state.progressTotal;
 			let pct = Math.floor(100 * n / t);
 			if (pct < 5) {
 				pct = 5;
@@ -205,10 +214,14 @@ const ResultsPage = {
 			const m = this.$store.state.exactMatch ? "Exact Search" : "Perceptual Search";
 			const c = this.$store.state.clusters.length;
 			const n = this.$store.state.progress;
-			const t = this.$store.state.total;
+			const t = this.$store.state.progressTotal;
 			const h = this.highlightedCoords.size;
 			const s = this.formatBytes(this.highSize);
-			if (this.endedState) {
+			if (this.isInitializing) {
+				const i = this.$store.state.inputCount;
+				return `Initializing: Found ${i} files so far...`;
+			}
+			else if (this.isEnded) {
 				const clusterInfo = `${m}: Found ${c} cluster${c == 1 ? "" : "s"}  in ${t} file${t == 1 ? "" : "s"}.`;
 				const selectedInfo = ` Highlighted ${h} file${h == 1? "" : "s"} (${s}).`;
 				return h ? clusterInfo + selectedInfo : clusterInfo;
@@ -222,9 +235,9 @@ const ResultsPage = {
 				return null;
 			}
 			if (this.$store.state.clusters.length == 0) {
-				if (this.$store.state.mustMatch && this.$store.state.total == 0) {
+				if (this.$store.state.mustMatch && this.$store.state.progressTotal == 0) {
 					return "The selected folder does not contain any images of supported types. Images must be JPG, PNG, GIF, WEBP, or BMP files less than 40 MB in size.";
-				} else if (!this.$store.state.mustMatch && this.$store.state.total <= 1) {
+				} else if (!this.$store.state.mustMatch && this.$store.state.progressTotal <= 1) {
 					return "The selected folder does not contain at least 2 images of supported types. Images must be JPG, PNG, GIF, WEBP, or BMP files less than 40 MB in size.";
 				} else {
 					return "No duplicates found.";

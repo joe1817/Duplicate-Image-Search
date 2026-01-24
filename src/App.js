@@ -7,10 +7,10 @@ const App = {
 
 	computed: {
 		setupPageVisible() {
-			return this.$store.state.searchStatus == "search_pending" || this.$store.state.searchStatus == "search_init";
+			return this.$store.state.searchStatus === "search_ready";
 		},
 		resultsPageVisible() {
-			return this.$store.state.searchStatus != "search_pending" && this.$store.state.searchStatus != "search_init";
+			return this.$store.state.searchStatus !== "search_ready";
 		},
 	}
 }

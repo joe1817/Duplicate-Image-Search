@@ -1,36 +1,29 @@
 class UnifiedFileProvider {
-	getFileType(item) {
-		// Modern File System Access API (FileSystemHandle)
-		if ("kind" in item) {
-			return item.kind; // Returns 'file' or 'directory'
-		}
-		// FileSystem Entry API (DataTransferItem / webkitEntries)
-		if ("isFile" in item) {
-			if (item.isFile) return "file";
-			if (item.isDirectory) return "directory";
-		}
-		// Standard File Object (HTML Input fallback)
-		if (item instanceof File) {
-			return "file";
-		}
-		return undefined;
-	}
+    getFileType(item) {
+        if ("kind" in item) return item.kind;
+        if ("isFile" in item) {
+            if (item.isFile) return "file";
+            if (item.isDirectory) return "directory";
+        }
+        if (item instanceof File) return "file";
+        return undefined;
+    }
 
     _sortEntries(entries) {
         return entries.sort((a, b) => {
-			const typeA = this.getFileType(a);
-			const typeB = this.getFileType(b);
-			const pathA = a.webkitRelativePath || a.name || "";
-			const pathB = b.webkitRelativePath || b.name || "";
-			if (typeA === typeB) {
-				return -PathSort.compare(pathA, pathB);
-			} else if (pathA === pathB) {
-				return 0;
-			} else if (typeA === "file") {
-				return -1;
-			} else {
-				return 1;
-			}
+            const typeA = this.getFileType(a);
+            const typeB = this.getFileType(b);
+            const pathA = a.webkitRelativePath || a.name || "";
+            const pathB = b.webkitRelativePath || b.name || "";
+            if (typeA === typeB) {
+                return -PathSort.compare(pathA, pathB);
+            } else if (pathA === pathB) {
+                return 0;
+            } else if (typeA === "file") {
+                return -1;
+            } else {
+                return 1;
+            }
         });
     }
 
@@ -56,22 +49,34 @@ class UnifiedFileProvider {
             yield* this._processEntries(sorted);
         } else if (input.files) {
             const sortedFiles = this._sortEntries(Array.from(input.files));
-            for (const file of sortedFiles) {
-                yield file;
-            }
+            yield sortedFiles;
         }
     }
 
     async * _processEntries(entries) {
+        const currentLevelFiles = [];
+        const directories = [];
+
         for (const entry of entries) {
-            yield* this._recursiveEntryWalk(entry);
+            if (this.getFileType(entry) === "file") {
+                const file = entry.isFile
+                    ? await new Promise((res, rej) => entry.file(res, rej))
+                    : await entry.getFile();
+                currentLevelFiles.push(file);
+            } else {
+                directories.push(entry);
+            }
+        }
+
+        if (currentLevelFiles.length > 0) yield currentLevelFiles;
+
+        for (const dir of directories) {
+            yield* this._recursiveEntryWalk(dir);
         }
     }
 
     async * _recursiveEntryWalk(entry) {
-        if (entry.isFile) {
-            yield await new Promise((resolve, reject) => entry.file(resolve, reject));
-        } else if (entry.isDirectory) {
+        if (entry.isDirectory) {
             const reader = entry.createReader();
             const allChildren = [];
 
@@ -82,8 +87,21 @@ class UnifiedFileProvider {
             }
 
             const sortedChildren = this._sortEntries(allChildren);
+            const files = [];
+            const subDirs = [];
+
             for (const child of sortedChildren) {
-                yield* this._recursiveEntryWalk(child);
+                if (child.isFile) {
+                    files.push(await new Promise((res, rej) => child.file(res, rej)));
+                } else {
+                    subDirs.push(child);
+                }
+            }
+
+            if (files.length > 0) yield files;
+
+            for (const dir of subDirs) {
+                yield* this._recursiveEntryWalk(dir);
             }
         }
     }
@@ -95,13 +113,21 @@ class UnifiedFileProvider {
         }
 
         const sortedEntries = this._sortEntries(entries);
+        const files = [];
+        const subDirs = [];
 
         for (const entry of sortedEntries) {
             if (entry.kind === "file") {
-                yield await entry.getFile();
-            } else if (entry.kind === "directory") {
-                yield* this._yieldFilesRecursively(entry);
+                files.push(await entry.getFile());
+            } else {
+                subDirs.push(entry);
             }
+        }
+
+        if (files.length > 0) yield files;
+
+        for (const dir of subDirs) {
+            yield* this._yieldFilesRecursively(dir);
         }
     }
 }

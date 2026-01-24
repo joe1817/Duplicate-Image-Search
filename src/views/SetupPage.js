@@ -96,22 +96,19 @@ const SetupPage = {
 		},
 
 		async dropHandler(event) {
+			this.updateUISearchInit();
 			const provider = new UnifiedFileProvider();
 			event.preventDefault();
-			this.updateUISearchInit();
-			const files = await Array.fromAsync(provider.getFilesFromDrop(event));
-			this.$store.dispatch("startSearch", files);
+			this.$store.dispatch("startSearch", provider.getFilesFromDrop(event));
 		},
 
 		async onDirPickerClick() {
-			const provider = new UnifiedFileProvider();
 			this.updateUISearchInit();
+			const provider = new UnifiedFileProvider();
 
 			// Try a modern file picker first if it's available
-			const files = await Array.fromAsync(provider.getFilesFromPicker());
-
-			if (files.length) {
-				this.$store.dispatch("startSearch", files);
+			if ("showDirectoryPicker" in window) {
+				this.$store.dispatch("startSearch", provider.getFilesFromPicker());
 			} else {
 				// fall back to <input>
 				this.$refs.inputDir.click();
@@ -124,12 +121,7 @@ const SetupPage = {
 
 		async onDirChange(event) {
 			const provider = new UnifiedFileProvider();
-			const files = await Array.fromAsync(provider.getFilesFromInput(event));
-			try {
-				this.$store.dispatch("startSearch", files);
-			} finally {
-				event.target.value = "";
-			}
+			this.$store.dispatch("startSearch", provider.getFilesFromInput(event));
 		},
 	},
 

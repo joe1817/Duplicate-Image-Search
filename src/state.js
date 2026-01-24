@@ -3,17 +3,25 @@ const State = {
 	plugins: [persistence],
 
 	state: {
-		mustMatch    : null,
-		fastRead     : false,
-		exactMatch   : false,
-		searchStatus : "search_pending", //search_init, search_running, search_paused, search_ended
-		clusters     : [],
-		total        : 0,
-		progress     : 0,
-		error        : 0,
+		mustMatch     : null,
+		fastRead      : false,
+		exactMatch    : false,
+		searchStatus  : "search_ready", //search_init, search_running, search_paused, search_ended
+		clusters      : [],
+		progressTotal : 0,
+		progress      : 0,
+		error         : 0,
 	},
 
 	getters: {
+		isInitializing(state) {
+			return state.searchStatus == "search_init";
+		},
+
+		isRunning(state) {
+			return state.searchStatus == "search_running";
+		},
+
 		isPaused(state) {
 			return state.searchStatus == "search_paused";
 		},
@@ -41,7 +49,7 @@ const State = {
 		},
 
 		SET_TOTAL(state, payload) {
-			state.total = payload;
+			state.progressTotal = payload;
 		},
 
 		INC_PROGRESS(state) {
@@ -54,31 +62,32 @@ const State = {
 	},
 
 	actions: {
-		readySearch({ commit, state }) {
-			commit("SET_SEARCH_STATE", "search_pending");
-		},
+		async startSearch({ commit, state }, batchGenerator) {
+			commit("SET_SEARCH_STATE", "search_init");
 
-		// typeof files = FileList or Array[File]
-		async startSearch({ commit, state }, inputFiles) {
 			// clear previous results
 			state.clusters = [];
-			state.total = 0;
+			state.inputCount = 0;
+			state.progressTotal = 0;
 			state.progress = 0;
 			state.error = 0;
 
-			console.log("Input files: " + inputFiles.length);
-
 			const validFiles = [];
-			Array.from(inputFiles).forEach(file => {
-				let ifile = new ImageFile(file);
-				if (ifile.isValid()) {
-					validFiles.push(ifile);
-				}
-			});
 
+			for await (const batch of batchGenerator) {
+				state.inputCount += batch.length;
+
+				batch.forEach(file => {
+					let ifile = new ImageFile(file);
+					if (ifile.isValid()) {
+						validFiles.push(ifile);
+					}
+				});
+			}
+			console.log("Input files: " + state.inputCount);
 			console.log("Valid files: " + validFiles.length);
 
-			commit("SET_TOTAL", validFiles.length);
+			commit("SET_SEARCH_STATE", "search_running");
 
 			let candidates = [];
 			if (state.exactMatch && state.mustMatch !== null) {
@@ -106,13 +115,13 @@ const State = {
 
 			console.log("Candidate files: " + candidates.length);
 
+			commit("SET_TOTAL", candidates.length);
+
 			const mustMatch = (state.mustMatch ? new ImageFile(state.mustMatch) : null);
 			if (mustMatch) {
 				mustMatch.clusterID = 0;
 				await mustMatch.load(state.fastRead, state.exactMatch);
 			}
-
-			commit("SET_SEARCH_STATE", "search_running");
 
 			const scannedFiles = [];
 			function processNext(files) {
