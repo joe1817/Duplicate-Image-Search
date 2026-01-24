@@ -11,7 +11,6 @@ const State = {
 		total        : 0,
 		progress     : 0,
 		error        : 0,
-		resultsCounter : 0,
 	},
 
 	getters: {
@@ -62,12 +61,10 @@ const State = {
 		// typeof files = FileList or Array[File]
 		async startSearch({ commit, state }, inputFiles) {
 			// clear previous results
-			clusters = [];
-			total = 0;
-			progress = 0;
-			error = 0;
-
-			state.resultsCounter++;
+			state.clusters = [];
+			state.total = 0;
+			state.progress = 0;
+			state.error = 0;
 
 			console.log("Input files: " + inputFiles.length);
 
