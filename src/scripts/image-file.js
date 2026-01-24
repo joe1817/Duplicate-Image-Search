@@ -7,8 +7,6 @@ class ImageFile {
 
 	static RESET_THRESHOLD   = 100;  // Reset the canvas after this many images
 
-	static thumbWorker = new Worker("src/scripts/thumbnail-worker.js");
-
 	static {
 		// Images will be treated as grids of "blocks", each containing "cells". Each cell is a pixel.
 		ImageFile.iconArea = ImageFile.iconDim ** 2;
@@ -27,11 +25,6 @@ class ImageFile {
 		ImageFile.rejectLumaDist *= ImageFile.iconArea;
 
 		ImageFile.imagesProcessed = 0;
-
-		ImageFile.thumbWorker.onerror = () => {
-			console.log("web workers unavailable");
-			ImageFile.thumbWorker = null;
-		}
 	}
 
 	constructor(file) {
@@ -305,80 +298,44 @@ class ImageFile {
 			canvas.style.height = resizeHeight + "px";
 		}
 
-		// Use web worker if it's available
+		if (resizeWidth && resizeHeight) {
+			// width & height were determined in getHash() (happens in perceptual match searches)
 
-		if (ImageFile.thumbWorker && resizeWidth && resizeHeight) {
-			return new Promise((resolve, reject) => {
-				// Create a unique ID for this specific request
-				const requestId = Math.random().toString(36).substring(2, 15);
-
-				// Use a robust listener instead of overwriting onmessage
-				const handler = (e) => {
-					if (e.data.id === requestId) {
-						ImageFile.thumbWorker.removeEventListener("message", handler);
-						if (e.data.error) {
-							reject(e.data.error);
-						} else {
-							const ctx = canvas.getContext("2d");
-							ctx.drawImage(e.data.bitmap, 0, 0);
-							e.data.bitmap.close();
-							resolve();
-						}
-					}
-				};
-
-				ImageFile.thumbWorker.addEventListener("message", handler);
-
-				// Pass the blob and dimensions.
-				// Don't transfer the canvas so the main thread keeps control.
-				// Otherwise, the canvas is at risk of being de-loaded when scrolled out of view.
-				ImageFile.thumbWorker.postMessage({
-					id: requestId,
-					blob,
-					width: resizeWidth * dpr,
-					height: resizeHeight * dpr
-				});
+			// resizing inside createImageBitmap is slightly slower than in drawImage
+			// but it makes much better thumbnails, even at "low" quality
+			const bitmap = await createImageBitmap(blob, {
+				resizeWidth: resizeWidth * dpr,
+				resizeHeight: resizeHeight * dpr,
+				resizeQuality: "low"
 			});
+
+			const ctx = canvas.getContext("2d");
+			//ctx.drawImage(bitmap, 0, 0,  width * dpr, height * dpr);
+			ctx.drawImage(bitmap, 0, 0);
+			bitmap.close();
 		} else {
-			if (resizeWidth && resizeHeight) {
-				// width & height were determined in getHash() (happens in perceptual match searches)
+			// width & height are not known because getHash() was not called (happens in exact match searches)
 
-				// resizing inside createImageBitmap is slightly slower than in drawImage
-				// but it makes much better thumbnails, even at "low" quality
-				const bitmap = await createImageBitmap(blob, {
-					resizeWidth: resizeWidth * dpr,
-					resizeHeight: resizeHeight * dpr,
-					resizeQuality: "low"
-				});
+			const bitmap = await createImageBitmap(blob);
+			this.width = bitmap.width;
+			this.height = bitmap.height;
 
-				const ctx = canvas.getContext("2d");
-				//ctx.drawImage(bitmap, 0, 0,  width * dpr, height * dpr);
-				ctx.drawImage(bitmap, 0, 0);
-				bitmap.close();
+			if (bitmap.width >= bitmap.height) {
+				resizeWidth = Config.thumbnailMaxDim;
+				resizeHeight = Math.floor(bitmap.height * resizeWidth / bitmap.width);
 			} else {
-				// width & height are not known because getHash() was not called (happens in exact match searches)
-
-				const bitmap = await createImageBitmap(blob);
-				this.width = bitmap.width;
-				this.height = bitmap.height;
-
-				if (bitmap.width >= bitmap.height) {
-					resizeWidth = Config.thumbnailMaxDim;
-					resizeHeight = Math.floor(bitmap.height * resizeWidth / bitmap.width);
-				} else {
-					resizeHeight = Config.thumbnailMaxDim;
-					resizeWidth = Math.floor(bitmap.width * resizeHeight / bitmap.height);
-				}
-
-				canvas.width = resizeWidth * dpr;
-				canvas.height = resizeHeight * dpr;
-				canvas.style.width = resizeWidth + "px";
-				canvas.style.height = resizeHeight + "px";
-
-				const ctx = canvas.getContext("2d");
-				ctx.drawImage(bitmap, 0, 0,  resizeWidth * dpr, resizeHeight * dpr);
-				bitmap.close();
+				resizeHeight = Config.thumbnailMaxDim;
+				resizeWidth = Math.floor(bitmap.width * resizeHeight / bitmap.height);
 			}
+
+			canvas.width = resizeWidth * dpr;
+			canvas.height = resizeHeight * dpr;
+			canvas.style.width = resizeWidth + "px";
+			canvas.style.height = resizeHeight + "px";
+
+			const ctx = canvas.getContext("2d");
+			ctx.drawImage(bitmap, 0, 0,  resizeWidth * dpr, resizeHeight * dpr);
+			bitmap.close();
 		}
 	}
 }
