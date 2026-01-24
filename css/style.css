@@ -118,8 +118,9 @@ label {
 	overflow-x: hidden;
 }
 
-.error-text {
-	color: red;
+a {
+	color: inherit;
+	text-decoration: none;
 }
 
 .options {

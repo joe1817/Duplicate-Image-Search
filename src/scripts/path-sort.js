@@ -24,10 +24,29 @@ class PathSort {
 
 		function countChar(str, char) {
 			let count = 0;
-			for (let i = 0; i < str.length; i++)
-				if (str[i] === char)
-					count++;
+			for (const c of str)
+				if (c === char) count++;
 			return count;
+		}
+
+		function splitPath(str) {
+			// Split on slash and dots that don't start the path or come immedaitely after a slash
+			const result = [];
+			let currentPart = "";
+
+			for (let i = 0; i < str.length; i++) {
+				const char = str[i];
+				const prev = str[i - 1];
+
+				if (char === "." && i > 0 && prev !== "/" && prev !== ".") {
+					result.push(currentPart);
+					currentPart = "";
+				} else {
+					currentPart += char;
+				}
+			}
+			result.push(currentPart);
+			return result;
 		}
 
 		let val = countChar(a, "/") - countChar(b, "/");
@@ -38,14 +57,14 @@ class PathSort {
 			numeric : true,
 		}
 
-		const aParts = a.replaceAll(/(?<=.)(?<![/.])\./g, "/").split("/");
-		const bParts = b.replaceAll(/(?<=.)(?<![/.])\./g, "/").split("/");
+		const aParts = splitPath(a);
+		const bParts = splitPath(b);
 
 		for (let i = 0; i < aParts.length; i++) {
 			val = aParts[i].localeCompare(bParts[i], lang, opts);
 			if (val) return val;
 		}
-		
+
 		return a.length - b.length;
 	}
 }

@@ -65,7 +65,7 @@ const State = {
 		async startSearch({ commit, state }, batchGenerator) {
 			commit("SET_SEARCH_STATE", "search_init");
 
-			// clear previous results
+			// clear previous results // TODO commit
 			state.clusters = [];
 			state.inputCount = 0;
 			state.progressTotal = 0;
@@ -75,10 +75,10 @@ const State = {
 			const validFiles = [];
 
 			for await (const batch of batchGenerator) {
-				state.inputCount += batch.length;
+				state.inputCount += batch.length; // TODO commit
 
 				batch.forEach(file => {
-					let ifile = new ImageFile(file);
+					const ifile = new ImageFile(file);
 					if (ifile.isValid()) {
 						validFiles.push(ifile);
 					}
@@ -124,7 +124,7 @@ const State = {
 			}
 
 			const scannedFiles = [];
-			function processNext(files) {
+			async function processNext(files) {
 				if (!files.length) {
 					commit("SET_SEARCH_STATE", "search_ended");
 					return;
@@ -139,40 +139,38 @@ const State = {
 
 				let ifile = files.pop();
 
-				ifile.load(state.fastRead, state.exactMatch)
-					.then(() => {
-						for (const ifile2 of scannedFiles) {
-							if (ifile.similar(ifile2, state.exactMatch)) {
-								const i = ifile.clusterID;
-								const j = ifile2.clusterID;
+				try {
+					await ifile.load(state.fastRead, state.exactMatch)
+					for (const ifile2 of scannedFiles) {
+						if (ifile.similar(ifile2, state.exactMatch)) {
+							const i = ifile.clusterID;
+							const j = ifile2.clusterID;
 
-								if (mustMatch && state.clusters.length == 0) {
-									state.clusters.push([ifile]); // TODO commit
-									ifile.clusterID = 0;
-								} else if (i === null && j === null) {
-									ifile.clusterID = state.clusters.length;
-									ifile2.clusterID = state.clusters.length;
-									state.clusters.push([ifile, ifile2]); // TODO commit
-								} else {
-									state.clusters[j].push(ifile); // TODO commit
-									ifile.clusterID = j;
-								}
-								break;
+							if (mustMatch && state.clusters.length == 0) {
+								state.clusters.push([ifile]); // TODO commit
+								ifile.clusterID = 0;
+							} else if (i === null && j === null) {
+								ifile.clusterID = state.clusters.length;
+								ifile2.clusterID = state.clusters.length;
+								state.clusters.push([ifile, ifile2]); // TODO commit
+							} else {
+								state.clusters[j].push(ifile); // TODO commit
+								ifile.clusterID = j;
 							}
+							break;
 						}
-						if (!mustMatch) {
-							scannedFiles.push(ifile);
-						}
-					})
-					.catch((err) => {
-						console.log("ERROR loading: " + ifile.relpath);
-						console.log(err);
-						commit("INC_ERROR");
-					})
-					.finally(() => {
-						commit("INC_PROGRESS");
-						processNext(files, scannedFiles);
-					});
+					}
+					if (!mustMatch) {
+						scannedFiles.push(ifile);
+					}
+				} catch(err) {
+					console.log("ERROR loading: " + ifile.relpath);
+					console.log(err);
+					commit("INC_ERROR");
+				} finally {
+					commit("INC_PROGRESS");
+					processNext(files, scannedFiles);
+				}
 			}
 
 			processNext(candidates);

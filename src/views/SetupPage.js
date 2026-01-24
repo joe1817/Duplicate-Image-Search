@@ -2,11 +2,11 @@ const SetupPage = {
 
 	template: `
 <div id="options-page" @drop="dropHandler($event)" @dragover="dragOverHandler($event)">
-	<h1>Duplicate Image Search</h1>
+	<h1><a href="https://joe1817.github.io/Duplicate-Image-Search/">Duplicate Image Search</a></h1>
 	<h2>Search a folder for groups of similar-looking images.</h2>
 
 	<div class="options">
-		<div id="options-start" ref="optionsStart" class="option-content">
+		<div id="options-start" ref="optionsStart" class="option-content" v-show="!filesInputted">
 			<div class="button-wrapper">
 				<input type="file" ref="inputFile" class="hidden" accept="image/*" @change="setMustMatchFile($event)" @cancel="reloadPage">
 				<input type="file" ref="inputDir"  class="hidden" accept="image/*" webkitdirectory multiple @change="onDirChange($event)" @cancel="reloadPage">
@@ -33,7 +33,7 @@ const SetupPage = {
 			</div>
 		</div>
 
-		<div id="options-cancel" ref="optionsCancel" class="option-content hidden">
+		<div id="options-cancel" ref="optionsCancel" class="option-content" v-show="filesInputted">
 			<div id="button-cancel" class="button hollow wide tall noselect" @click="reloadPage">Cancel Search</div><span id="spinner"><div class="spinner-dual-ring"></div></span>
 		</div>
 	</div>
@@ -45,6 +45,12 @@ const SetupPage = {
 	</div>
 </div>
 `,
+
+	data() {
+		return {
+			filesInputted : false,
+		}
+	},
 
 	mounted() {
 		this.$nextTick(()=>{
@@ -70,11 +76,10 @@ const SetupPage = {
 			location.reload()
 		},
 
-		updateUISearchInit() {
+		showSpinner() {
 			// start after the file picker is displayed
 			setTimeout(() => {
-				this.$refs.optionsCancel.classList.remove("hidden");
-				this.$refs.optionsStart.classList.add("hidden");
+				this.filesInputted = true;
 			}, 500);
 		},
 
@@ -96,14 +101,14 @@ const SetupPage = {
 		},
 
 		async dropHandler(event) {
-			this.updateUISearchInit();
+			this.showSpinner();
 			const provider = new UnifiedFileProvider();
 			event.preventDefault();
 			this.$store.dispatch("startSearch", provider.getFilesFromDrop(event));
 		},
 
 		async onDirPickerClick() {
-			this.updateUISearchInit();
+			this.showSpinner();
 			const provider = new UnifiedFileProvider();
 
 			// Try a modern file picker first if it's available
