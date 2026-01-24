@@ -78,9 +78,6 @@ const State = {
 					validFiles.push(ifile);
 				}
 			});
-			validFiles.sort((a,b) => {
-				return -PathSort.compare(a.relpath, b.relpath); // negative b/c items will be popped from the back
-			});
 
 			console.log("Valid files: " + validFiles.length);
 

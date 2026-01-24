@@ -122,9 +122,11 @@ const SetupPage = {
 			this.$refs.inputFile.click();
 		},
 
-		onDirChange(event) {
+		async onDirChange(event) {
+			const provider = new UnifiedFileProvider();
+			const files = await Array.fromAsync(provider.getFilesFromInput(event));
 			try {
-				this.$store.dispatch("startSearch", event.target.files);
+				this.$store.dispatch("startSearch", files);
 			} finally {
 				event.target.value = "";
 			}
