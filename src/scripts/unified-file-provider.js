@@ -16,7 +16,7 @@ class UnifiedFileProvider {
             const pathA = a.webkitRelativePath || a.name || "";
             const pathB = b.webkitRelativePath || b.name || "";
             if (typeA === typeB) {
-                return -PathSort.compare(pathA, pathB);
+                return PathSort.compare(pathA, pathB);
             } else if (pathA === pathB) {
                 return 0;
             } else if (typeA === "file") {

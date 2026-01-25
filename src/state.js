@@ -124,20 +124,16 @@ const State = {
 			}
 
 			const scannedFiles = [];
-			async function processNext(files) {
-				if (!files.length) {
-					commit("SET_SEARCH_STATE", "search_ended");
-					return;
-				}
+			async function processNext(files, i=0) {
 				if (state.searchStatus == "search_paused") {
-					setTimeout(processNext, 1000, files);
+					setTimeout(processNext, 1000, files, i);
 					return;
 				}
 				if (mustMatch) {
 					scannedFiles.push(mustMatch);
 				}
 
-				let ifile = files.pop();
+				const ifile = files[i];
 
 				try {
 					await ifile.load(state.fastRead, state.exactMatch)
@@ -152,7 +148,7 @@ const State = {
 							} else if (i === null && j === null) {
 								ifile.clusterID = state.clusters.length;
 								ifile2.clusterID = state.clusters.length;
-								state.clusters.push([ifile, ifile2]); // TODO commit
+								state.clusters.push([ifile2, ifile]); // TODO commit
 							} else {
 								state.clusters[j].push(ifile); // TODO commit
 								ifile.clusterID = j;
@@ -169,7 +165,11 @@ const State = {
 					commit("INC_ERROR");
 				} finally {
 					commit("INC_PROGRESS");
-					processNext(files, scannedFiles);
+					if (i+1 < files.length) {
+						processNext(files, i+1);
+					} else {
+						commit("SET_SEARCH_STATE", "search_ended");
+					}
 				}
 			}
 
