@@ -57,15 +57,19 @@ class ImageFile {
 
 	async load(fastRead, exactMatch) {
 		if (!exactMatch && fastRead && this.type === "jpeg") {
-			const data = await this.readThumbnail();
-			if (data) {
-				const bitmap = await createImageBitmap(data);
-				try {
-					this.hash = ImageFile.getHash(bitmap);
-				} finally {
-					bitmap.close();
+			try {
+				const data = await this.readThumbnail();
+				if (data) {
+					const bitmap = await createImageBitmap(data);
+					try {
+						this.hash = ImageFile.getHash(bitmap);
+						return;
+					} finally {
+						bitmap.close();
+					}
 				}
-				return;
+			} catch (error) {
+				console.log("failed to read thumbnail: " + this.relpath);
 			}
 		}
 
@@ -84,6 +88,7 @@ class ImageFile {
 				this.height = bitmap.height;
 				this.hash = ImageFile.getHash(bitmap);
 			} catch (error) {
+				console.log("corrupt image: " + this.relpath);
 				this.valid = false;
 			} finally {
 				bitmap.close();
