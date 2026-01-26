@@ -63,6 +63,7 @@ const State = {
 
 	actions: {
 		async startSearch({ commit, state }, batchGenerator) {
+			console.time("searchTimer");
 			commit("SET_SEARCH_STATE", "search_init");
 
 			// clear previous results // TODO commit
@@ -169,6 +170,7 @@ const State = {
 						processNext(files, i+1);
 					} else {
 						commit("SET_SEARCH_STATE", "search_ended");
+						console.timeEnd("searchTimer");
 					}
 				}
 			}
