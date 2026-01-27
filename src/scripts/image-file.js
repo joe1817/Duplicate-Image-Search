@@ -1,136 +1,7 @@
 class ImageFile {
+
 	static formats           = ["jpg", "jpeg", "png", "gif", "webp", "bmp"];
-
-	static iconDim           = 11;   // Images will be hashed into icons of this side length
 	static ratioTolerancePct = 10;   // Image aspect ratios may differ by up to 10% before comparing
-	static rejectLumaDist    = 400;  // Images will be considered distinct if there luma distance is outside this threshold
-
-	static RESET_THRESHOLD   = 100;  // Reset the canvas after this many images
-
-	static {
-		// Images will be treated as grids of "blocks", each containing "cells". Each cell is a pixel.
-		ImageFile.iconArea = ImageFile.iconDim ** 2;
-		ImageFile.blockDim = 2 * ImageFile.iconDim + 1;
-		ImageFile.cellDim  = ImageFile.iconDim + 1;
-
-		if ((ImageFile.blockDim-2)%3 != 0) {
-			throw new Error("Invalid iconDim");
-		}
-
-		ImageFile.canvasDim = ImageFile.blockDim * ImageFile.cellDim; // Images will be loaded as squares with this side length
-
-		ImageFile.canvas  = new OffscreenCanvas(ImageFile.canvasDim, ImageFile.canvasDim);
-		ImageFile.context = ImageFile.canvas.getContext("2d", { willReadFrequently: true });
-
-		ImageFile.rejectLumaDist *= ImageFile.iconArea;
-
-		ImageFile.imagesProcessed = 0;
-	}
-	
-	static getHash(bitmap) {
-		ImageFile.canvas.width = ImageFile.canvasDim;
-		ImageFile.canvas.height = ImageFile.canvasDim;
-
-		ImageFile.context.clearRect(0, 0, ImageFile.canvasDim, ImageFile.canvasDim); // prevent alpha-blending problems
-
-		ImageFile.context.drawImage(bitmap, 0, 0, ImageFile.canvasDim, ImageFile.canvasDim);
-		let data = ImageFile.context.getImageData(0, 0, ImageFile.canvasDim, ImageFile.canvasDim).data;
-		data = ImageFile.rgbaToGreyscale(data);
-		data = ImageFile.boxBlur(data, ImageFile.canvasDim, ImageFile.canvasDim, ImageFile.cellDim, ImageFile.cellDim);
-		data = ImageFile.boxBlur(data, ImageFile.blockDim, ImageFile.blockDim, 3, 2);
-		data = ImageFile.normalize(data);
-
-		ImageFile.imagesProcessed++;
-		if (ImageFile.imagesProcessed % ImageFile.RESET_THRESHOLD === 0 || bitmap.width > 6000 || bitmap.height > 6000) {
-			ImageFile.refreshCanvas();
-		}
-
-		return data;
-	}
-
-	static rgbaToGreyscale(data) {
-		let grey = new Array(data.length/4);
-		let r = 0, g = 0, b = 0;
-		for (let i = 0, j = 0; i < data.length; i += 4, j++) {
-			let r = data[i  ];
-			let g = data[i+1];
-			let b = data[i+2];
-			grey[j] = 0.2990000000 * r + 0.5870000000 * g + 0.1140000000 * b;
-		}
-		return grey;
-	}
-
-	static refreshCanvas() {
-		// clears GPU command buffer and other metadata, and helps compact memory
-
-		// Setting width/height to their own values clears the state,
-		// but setting them to 0 then back to the target size
-		// forces a full memory purge in most browser engines.
-		const oldWidth = ImageFile.canvas.width;
-		const oldHeight = ImageFile.canvas.height;
-
-		ImageFile.canvas.width = 0;
-		ImageFile.canvas.height = 0;
-
-		ImageFile.canvas.width = oldWidth;
-		ImageFile.canvas.height = oldHeight;
-
-		console.log("canvas context reset");
-	}
-
-	static boxBlur(data, width, height, windowDim, shift) {
-		const destDim = parseInt((width-windowDim)/shift) + 1;
-		const blurredData = new Array(destDim ** 2);
-		const n = windowDim ** 2;
-		let sum;
-		let i = 0, j = 0;
-
-		for (let shiftRow = 0; shiftRow <= width-windowDim; shiftRow += shift) {
-			for (let shiftCol = 0; shiftCol <= height-windowDim; shiftCol += shift) {
-				sum = 0;
-				for (let row = 0; row < windowDim; row++) {
-					for (let col = 0; col < windowDim; col++) {
-						i = ((row + shiftRow) * width + (col + shiftCol));
-						sum += data[i];
-					}
-				}
-				blurredData[j] = sum / n;
-				j++;
-			}
-		}
-
-		return blurredData;
-	}
-
-	static normalize(vals) {
-		let max  = 0;
-		let min  = Number.POSITIVE_INFINITY;
-		for (let i = 0; i < vals.length; i++) {
-			if (vals[i] > max) {
-				max = vals[i];
-			} else if (vals[i] < min) {
-				min = vals[i];
-			}
-		}
-
-		let norm = null;
-		let range = max - min;
-		if (range < 0.00001) {
-			norm = new Array(vals.length).fill(vals[0]);
-		} else {
-			norm = vals.map(val => (val - min) * 255 / range);
-		}
-		return norm;
-	}
-
-	static distance(a, b) {
-		const icon1 = a.hash, icon2 = b.hash;
-		let dist  = 0;
-		for (let i = 0; i < ImageFile.iconArea; i++) {
-			dist += (icon1[i] - icon2[i]) ** 2;
-		}
-		return dist
-	}
 
 	constructor(file) {
 		this.file       = file;
@@ -160,18 +31,13 @@ class ImageFile {
 		return this.valid;
 	}
 
-	async load(fastRead, exactMatch) {
+	async load(fastRead, exactMatch, phash=AHash) {
 		if (!exactMatch && fastRead && this.type === "jpeg") {
 			try {
 				const data = await this.readThumbnail();
 				if (data) {
-					const bitmap = await createImageBitmap(data);
-					try {
-						this.hash = ImageFile.getHash(bitmap);
-						return;
-					} finally {
-						bitmap.close();
-					}
+					this.hash = await phash.fromBlob(data);
+					return;
 				}
 			} catch (error) {
 				console.log("failed to read thumbnail: " + this.relpath);
@@ -187,16 +53,13 @@ class ImageFile {
 			return;
 
 		} else {
-			const bitmap = await createImageBitmap(this.file);
 			try {
-				this.width  = bitmap.width;
-				this.height = bitmap.height;
-				this.hash = ImageFile.getHash(bitmap);
+				this.hash = await phash.fromBlob(this.file);
+				this.width  = this.hash.width;
+				this.height = this.hash.height;
 			} catch (error) {
 				console.log("corrupt image: " + this.relpath);
 				this.valid = false;
-			} finally {
-				bitmap.close();
 			}
 		}
 	}
@@ -211,7 +74,7 @@ class ImageFile {
 			if (Math.abs(100*h1*w2 - 100*h2*w1) > Math.max(h1*w2, h2*w1) * ImageFile.ratioTolerancePct) {
 				return false;
 			}
-			if (ImageFile.distance(this, other) > ImageFile.rejectLumaDist) {
+			if (!this.hash.isSimilar(other.hash)) {
 				return false;
 			}
 			return true;
