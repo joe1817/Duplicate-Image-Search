@@ -1,5 +1,7 @@
 const State = {
 
+	pauseHandler: new Signal(),
+
 	plugins: [persistence],
 
 	state: {
@@ -34,6 +36,11 @@ const State = {
 	mutations: {
 		SET_SEARCH_STATE(state, payload) {
 			state.searchStatus = payload;
+			if (payload === "search_paused") {
+				State.pauseHandler.pause();
+			} else {
+				State.pauseHandler.unpause();
+			}
 		},
 
 		SET_MUST_MATCH_FILE(state, payload) {
@@ -74,7 +81,6 @@ const State = {
 			state.error = 0;
 
 			const validFiles = [];
-
 			for await (const batch of batchGenerator) {
 				state.inputCount += batch.length; // TODO commit
 
@@ -85,9 +91,9 @@ const State = {
 					}
 				});
 			}
+
 			console.log("Input files: " + state.inputCount);
 			console.log("Valid files: " + validFiles.length);
-
 			commit("SET_SEARCH_STATE", "search_running");
 
 			let candidates = [];
@@ -115,7 +121,6 @@ const State = {
 			}
 
 			console.log("Candidate files: " + candidates.length);
-
 			commit("SET_TOTAL", candidates.length);
 
 			const mustMatch = (state.mustMatch ? new ImageFile(state.mustMatch) : null);
@@ -125,19 +130,14 @@ const State = {
 			}
 
 			const scannedFiles = [];
-			async function processNext(files, i=0) {
-				if (state.searchStatus == "search_paused") {
-					setTimeout(processNext, 1000, files, i);
-					return;
-				}
+			for (const ifile of candidates) {
 				if (mustMatch) {
 					scannedFiles.push(mustMatch);
 				}
 
-				const ifile = files[i];
-
 				try {
 					await ifile.load(state.fastRead, state.exactMatch)
+					await State.pauseHandler.waitIfPaused();
 					for (const ifile2 of scannedFiles) {
 						if (ifile.isSimilar(ifile2, state.exactMatch)) {
 							const i = ifile.clusterID;
@@ -166,16 +166,11 @@ const State = {
 					commit("INC_ERROR");
 				} finally {
 					commit("INC_PROGRESS");
-					if (i+1 < files.length) {
-						processNext(files, i+1);
-					} else {
-						commit("SET_SEARCH_STATE", "search_ended");
-						console.timeEnd("searchTimer");
-					}
 				}
 			}
 
-			processNext(candidates);
+			commit("SET_SEARCH_STATE", "search_ended");
+			console.timeEnd("searchTimer");
 		}
 	}
 }
