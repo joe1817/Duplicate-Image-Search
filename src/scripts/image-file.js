@@ -26,141 +26,7 @@ class ImageFile {
 
 		ImageFile.imagesProcessed = 0;
 	}
-
-	constructor(file) {
-		this.file       = file;
-		this.relpath    = file.webkitRelativePath || file.name; // webkitRelativePath is "" for top-level dropped files
-		this.depth      = this.relpath.split("/").length-1; // Forward-slash is used on Windows, too
-		this.type       = null;
-		this.valid      = null;
-		this.width      = null;
-		this.height     = null;
-		this.hash       = null;
-		this.clusterID  = null;
-		this.thumbStart = null;
-		this.thumbEnd   = null;
-
-		// type is "" for dropped files inside folders
-		const i = file.name.lastIndexOf(".");
-		this.type = i == -1 ? "" : file.name.substring(i+1);
-		if (this.type === "jpg") {
-			this.type = "jpeg";
-		}
-	}
-
-	isValid() {
-		if (this.valid === null) {
-			this.valid = ImageFile.formats.includes(this.type) && this.file.size <= Config.maxFileSize;
-		}
-		return this.valid;
-	}
-
-	async load(fastRead, exactMatch) {
-		if (!exactMatch && fastRead && this.type === "jpeg") {
-			try {
-				const data = await this.readThumbnail();
-				if (data) {
-					const bitmap = await createImageBitmap(data);
-					try {
-						this.hash = ImageFile.getHash(bitmap);
-						return;
-					} finally {
-						bitmap.close();
-					}
-				}
-			} catch (error) {
-				console.log("failed to read thumbnail: " + this.relpath);
-			}
-		}
-
-		if (exactMatch) {
-			const arrayBuffer = await this.file.arrayBuffer();
-			const hashBuffer = await crypto.subtle.digest("SHA-256", arrayBuffer);
-			const hashArray = Array.from(new Uint8Array(hashBuffer));
-			const hash = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
-			this.hash = hash;
-			return;
-
-		} else {
-			const bitmap = await createImageBitmap(this.file);
-			try {
-				this.width  = bitmap.width;
-				this.height = bitmap.height;
-				this.hash = ImageFile.getHash(bitmap);
-			} catch (error) {
-				console.log("corrupt image: " + this.relpath);
-				this.valid = false;
-			} finally {
-				bitmap.close();
-			}
-		}
-	}
-
-	async readThumbnail() {
-		const reader = new FileReader();
-
-		let bytes = null;
-		try {
-			bytes = await new Promise((resolve, reject) => {
-				reader.readAsArrayBuffer(this.file.slice(0, 80*1024));
-				reader.onerror = reject;
-				reader.onload = (evt) => {
-					resolve(new Uint8Array(evt.target.result));
-				}
-			});
-		} catch(error) {
-			return null;
-		} finally {
-			reader.onload = null;
-			reader.onerror = null;
-		}
-
-		let lo, hi;
-		for (let i = 0; i < bytes.length; ) {
-			while(bytes[i] == 0xFF) i++;
-			let marker = bytes[i];  i++;
-			if (0xD0 <= marker && marker <= 0xD7) continue; // RST
-			if (marker == 0xD8) continue; // SOI
-			if (marker == 0xD9) break;    // EOI
-			if (marker == 0x01) continue; // TEM
-			if (marker == 0x00) continue; // escaped 0xFF byte
-			const len = (bytes[i]<<8) | bytes[i+1];  i+=2;
-			if (marker == 0xE1) { // APP1
-				if (bytes[i] == 0x45 && bytes[i+1] == 0x78 && bytes[i+2] == 0x69 && bytes[i+3] == 0x66 && bytes[i+4] == 0x00 && bytes[i+5] == 0x00) { // EXIF header
-					// search for embedded image
-					for (let j = i+6; j < i+len-2; j++) {
-						if (bytes[j] == 0xFF) {
-							if (!lo) {
-								if (bytes[j + 1] == 0xD8) {
-									lo = j;
-								}
-							} else {
-								if (bytes[j + 1] == 0xD9) {
-									hi = j + 2;
-									break;
-								}
-							}
-						}
-					}
-				}
-			}
-			if (marker == 0xC0) {
-				this.height = (bytes[i+1]<<8) | bytes[i+2];
-				this.width  = (bytes[i+3]<<8) | bytes[i+4];
-				break;
-			}
-			i+=len-2;
-		}
-		if (lo && hi && this.height && this.width) {
-			console.log("thumbnail read: " + this.file.name);
-			this.thumbStart = lo;
-			this.thumbEnd   = hi;
-			return new Blob([bytes.slice(lo, hi)], {type:"image/jpeg"}); // bytes.subarray will create a "view" into bytes that prevents GC
-		} else {
-			return null;
-		}
-	}
-
+	
 	static getHash(bitmap) {
 		ImageFile.canvas.width = ImageFile.canvasDim;
 		ImageFile.canvas.height = ImageFile.canvasDim;
@@ -266,7 +132,76 @@ class ImageFile {
 		return dist
 	}
 
-	similar(other, exactMatch) {
+	constructor(file) {
+		this.file       = file;
+		this.relpath    = file.webkitRelativePath || file.name; // webkitRelativePath is "" for top-level dropped files
+		this.depth      = this.relpath.split("/").length-1; // Forward-slash is used on Windows, too
+		this.type       = null;
+		this.valid      = null;
+		this.width      = null;
+		this.height     = null;
+		this.hash       = null;
+		this.clusterID  = null;
+		this.thumbStart = null;
+		this.thumbEnd   = null;
+
+		// type is "" for dropped files inside folders
+		const i = file.name.lastIndexOf(".");
+		this.type = i == -1 ? "" : file.name.substring(i+1);
+		if (this.type === "jpg") {
+			this.type = "jpeg";
+		}
+	}
+
+	isValid() {
+		if (this.valid === null) {
+			this.valid = ImageFile.formats.includes(this.type) && this.file.size <= Config.maxFileSize;
+		}
+		return this.valid;
+	}
+
+	async load(fastRead, exactMatch) {
+		if (!exactMatch && fastRead && this.type === "jpeg") {
+			try {
+				const data = await this.readThumbnail();
+				if (data) {
+					const bitmap = await createImageBitmap(data);
+					try {
+						this.hash = ImageFile.getHash(bitmap);
+						return;
+					} finally {
+						bitmap.close();
+					}
+				}
+			} catch (error) {
+				console.log("failed to read thumbnail: " + this.relpath);
+			}
+		}
+
+		if (exactMatch) {
+			const arrayBuffer = await this.file.arrayBuffer();
+			const hashBuffer = await crypto.subtle.digest("SHA-256", arrayBuffer);
+			const hashArray = Array.from(new Uint8Array(hashBuffer));
+			const hash = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+			this.hash = hash;
+			return;
+
+		} else {
+			const bitmap = await createImageBitmap(this.file);
+			try {
+				this.width  = bitmap.width;
+				this.height = bitmap.height;
+				this.hash = ImageFile.getHash(bitmap);
+			} catch (error) {
+				console.log("corrupt image: " + this.relpath);
+				this.valid = false;
+			} finally {
+				bitmap.close();
+			}
+		}
+	}
+
+	isSimilar(other, exactMatch) {
 		if (exactMatch) {
 			return this.hash == other.hash;
 		} else {
@@ -280,6 +215,71 @@ class ImageFile {
 				return false;
 			}
 			return true;
+		}
+	}
+
+	async readThumbnail() {
+		const reader = new FileReader();
+
+		let bytes = null;
+		try {
+			bytes = await new Promise((resolve, reject) => {
+				reader.readAsArrayBuffer(this.file.slice(0, 80*1024));
+				reader.onerror = reject;
+				reader.onload = (evt) => {
+					resolve(new Uint8Array(evt.target.result));
+				}
+			});
+		} catch(error) {
+			return null;
+		} finally {
+			reader.onload = null;
+			reader.onerror = null;
+		}
+
+		let lo, hi;
+		for (let i = 0; i < bytes.length; ) {
+			while(bytes[i] == 0xFF) i++;
+			let marker = bytes[i];  i++;
+			if (0xD0 <= marker && marker <= 0xD7) continue; // RST
+			if (marker == 0xD8) continue; // SOI
+			if (marker == 0xD9) break;    // EOI
+			if (marker == 0x01) continue; // TEM
+			if (marker == 0x00) continue; // escaped 0xFF byte
+			const len = (bytes[i]<<8) | bytes[i+1];  i+=2;
+			if (marker == 0xE1) { // APP1
+				if (bytes[i] == 0x45 && bytes[i+1] == 0x78 && bytes[i+2] == 0x69 && bytes[i+3] == 0x66 && bytes[i+4] == 0x00 && bytes[i+5] == 0x00) { // EXIF header
+					// search for embedded image
+					for (let j = i+6; j < i+len-2; j++) {
+						if (bytes[j] == 0xFF) {
+							if (!lo) {
+								if (bytes[j + 1] == 0xD8) {
+									lo = j;
+								}
+							} else {
+								if (bytes[j + 1] == 0xD9) {
+									hi = j + 2;
+									break;
+								}
+							}
+						}
+					}
+				}
+			}
+			if (marker == 0xC0) {
+				this.height = (bytes[i+1]<<8) | bytes[i+2];
+				this.width  = (bytes[i+3]<<8) | bytes[i+4];
+				break;
+			}
+			i+=len-2;
+		}
+		if (lo && hi && this.height && this.width) {
+			console.log("thumbnail read: " + this.file.name);
+			this.thumbStart = lo;
+			this.thumbEnd   = hi;
+			return new Blob([bytes.slice(lo, hi)], {type:"image/jpeg"}); // bytes.subarray will create a "view" into bytes that prevents GC
+		} else {
+			return null;
 		}
 	}
 

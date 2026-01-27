@@ -139,7 +139,7 @@ const State = {
 				try {
 					await ifile.load(state.fastRead, state.exactMatch)
 					for (const ifile2 of scannedFiles) {
-						if (ifile.similar(ifile2, state.exactMatch)) {
+						if (ifile.isSimilar(ifile2, state.exactMatch)) {
 							const i = ifile.clusterID;
 							const j = ifile2.clusterID;
 
