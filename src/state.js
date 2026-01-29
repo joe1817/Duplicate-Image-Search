@@ -34,6 +34,15 @@ const State = {
 	},
 
 	mutations: {
+		RESET(state) {
+			// clear previous results
+			state.clusters      = [];
+			state.inputCount    = 0;
+			state.progressTotal = 0;
+			state.progress      = 0;
+			state.error         = 0;
+		},
+
 		SET_SEARCH_STATE(state, payload) {
 			state.searchStatus = payload;
 			if (payload === "search_paused") {
@@ -55,34 +64,54 @@ const State = {
 			state.exactMatch = payload;
 		},
 
+		SET_INPUT_COUNT(state, payload) {
+			state.inputCount = payload;
+		},
+
 		SET_TOTAL(state, payload) {
 			state.progressTotal = payload;
 		},
 
-		INC_PROGRESS(state) {
-			state.progress += 1;
+		SET_PROGRESS(state, payload) {
+			state.progress = payload;
 		},
 
 		INC_ERROR(state) {
 			state.progress += 1;
+		},
+
+		CREATE_CLUSTER(state) {
+			state.clusters.push([]);
+		},
+
+		ADD_TO_CLUSTER(state, payload) {
+			state.clusters[payload.index].push(payload.ifile);
 		},
 	},
 
 	actions: {
 		async startSearch({ commit, state }, batchGenerator) {
 			console.time("searchTimer");
+			commit("RESET");
 			commit("SET_SEARCH_STATE", "search_init");
 
-			// clear previous results // TODO commit
-			state.clusters = [];
-			state.inputCount = 0;
-			state.progressTotal = 0;
-			state.progress = 0;
-			state.error = 0;
-
 			const validFiles = [];
+			let inputCount = 0;
+			let lastTime = 0;
+			let doCommit = false;
+
 			for await (const batch of batchGenerator) {
-				state.inputCount += batch.length; // TODO commit
+				inputCount += batch.length;
+
+				const now = performance.now();
+				if (now - lastTime > 16) {
+					lastTime = now;
+					doCommit = true;
+				} else {
+					doCommit = false;
+				}
+				if (doCommit)
+					commit("SET_INPUT_COUNT", inputCount);
 
 				batch.forEach(file => {
 					const ifile = new ImageFile(file);
@@ -91,6 +120,8 @@ const State = {
 					}
 				});
 			}
+
+			commit("SET_INPUT_COUNT", inputCount);
 
 			console.log("Input files: " + state.inputCount);
 			console.log("Valid files: " + validFiles.length);
@@ -130,7 +161,21 @@ const State = {
 			}
 
 			const scannedFiles = [];
-			for (const ifile of candidates) {
+			let progress = 0;
+			lastTime = 0;
+			doCommit = false;
+
+			for (let i = 0; i < candidates.length; i++) {
+				const now = performance.now();
+				if (now - lastTime > 16) {
+					lastTime = now;
+					doCommit = true;
+				} else {
+					doCommit = false;
+				}
+
+				let ifile = candidates[i];
+
 				if (mustMatch) {
 					scannedFiles.push(mustMatch);
 				}
@@ -144,14 +189,17 @@ const State = {
 							const j = ifile2.clusterID;
 
 							if (mustMatch && state.clusters.length == 0) {
-								state.clusters.push([ifile]); // TODO commit
+								commit("CREATE_CLUSTER");
+								commit("ADD_TO_CLUSTER", {index:0, ifile:ifile});
 								ifile.clusterID = 0;
 							} else if (i === null && j === null) {
 								ifile.clusterID = state.clusters.length;
 								ifile2.clusterID = state.clusters.length;
-								state.clusters.push([ifile2, ifile]); // TODO commit
+								commit("CREATE_CLUSTER");
+								commit("ADD_TO_CLUSTER", {index:state.clusters.length-1, ifile:ifile2});
+								commit("ADD_TO_CLUSTER", {index:state.clusters.length-1, ifile:ifile});
 							} else {
-								state.clusters[j].push(ifile); // TODO commit
+								commit("ADD_TO_CLUSTER", {index:j, ifile:ifile});
 								ifile.clusterID = j;
 							}
 							break;
@@ -165,10 +213,12 @@ const State = {
 					console.log(err);
 					commit("INC_ERROR");
 				} finally {
-					commit("INC_PROGRESS");
+					if (doCommit)
+						commit("SET_PROGRESS", i);
 				}
 			}
 
+			commit("SET_PROGRESS", candidates.length);
 			commit("SET_SEARCH_STATE", "search_ended");
 			console.timeEnd("searchTimer");
 		}
