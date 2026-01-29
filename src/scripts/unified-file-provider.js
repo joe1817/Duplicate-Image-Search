@@ -42,6 +42,14 @@ class UnifiedFileProvider {
         yield* this._processEntries(sortedEntries);
     }
 
+    async * getFilesFromPaste(event) {
+        event.preventDefault();
+        const items = Array.from(event.clipboardData.items);
+        const entries = items.map(item => item.webkitGetAsEntry()).filter(Boolean);
+        const sortedEntries = this._sortEntries(entries);
+        yield* this._processEntries(sortedEntries);
+    }
+
     async * getFilesFromInput(event) {
         const input = event.target;
         if (input.webkitEntries && input.webkitEntries.length > 0) {

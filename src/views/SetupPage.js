@@ -1,7 +1,7 @@
 const SetupPage = {
 
 	template: `
-<div id="options-page" @drop="dropHandler($event)" @dragover="dragOverHandler($event)">
+<div id="options-page" @drop="dropHandler($event)" @dragover="dragOverHandler($event)" @paste="pasteHandler($event)" tabindex="-1">
 	<h1><a href="https://joe1817.github.io/Duplicate-Image-Search/">Duplicate Image Search</a></h1>
 	<h2>Search a folder for groups of similar-looking images.</h2>
 
@@ -55,6 +55,7 @@ const SetupPage = {
 	mounted() {
 		this.$nextTick(()=>{
 			window.scrollTo({top: 0});
+			this.$el.focus(); // needed for pasting files to work
 		});
 		// If not loading from localStorage, the store state and checkbox state can de-sync
 		// due to the BFcache (browser autocompletion), which can change the checkbox state
@@ -96,15 +97,8 @@ const SetupPage = {
 			this.$store.commit("SET_MUST_MATCH_FILE", null);
 		},
 
-		dragOverHandler(event) {
-			event.preventDefault();
-		},
-
-		async dropHandler(event) {
-			this.showSpinner();
-			const provider = new UnifiedFileProvider();
-			event.preventDefault();
-			this.$store.dispatch("startSearch", provider.getFilesFromDrop(event));
+		onFilePickerClick() {
+			this.$refs.inputFile.click();
 		},
 
 		async onDirPickerClick() {
@@ -120,13 +114,25 @@ const SetupPage = {
 			}
 		},
 
-		onFilePickerClick() {
-			this.$refs.inputFile.click();
-		},
-
 		async onDirChange(event) {
 			const provider = new UnifiedFileProvider();
 			this.$store.dispatch("startSearch", provider.getFilesFromInput(event));
+		},
+
+		dragOverHandler(event) {
+			event.preventDefault();
+		},
+
+		async dropHandler(event) {
+			this.showSpinner();
+			const provider = new UnifiedFileProvider();
+			this.$store.dispatch("startSearch", provider.getFilesFromDrop(event));
+		},
+
+		async pasteHandler(event) {
+			this.showSpinner();
+			const provider = new UnifiedFileProvider();
+			this.$store.dispatch("startSearch", provider.getFilesFromPaste(event));
 		},
 	},
 
