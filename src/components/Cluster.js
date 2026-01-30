@@ -96,10 +96,12 @@ const Cluster = {
 	},
 
 	mounted() {
-		const path_span1 = this.$refs.info[0].children[2];
-		const path_span2 = this.$refs.info[1].children[2];
-		path_span1.innerHTML = pathDiff(path_span1.textContent, path_span2.textContent);
-		path_span2.innerHTML = pathDiff(path_span2.textContent, path_span1.textContent);
+		if (this.$refs.info[1]) {
+			const path_span1 = this.$refs.info[0].children[2];
+			const path_span2 = this.$refs.info[1].children[2];
+			path_span1.innerHTML = pathDiff(path_span1.textContent, path_span2.textContent);
+			path_span2.innerHTML = pathDiff(path_span2.textContent, path_span1.textContent);
+		}
 	},
 
 	updated() {
