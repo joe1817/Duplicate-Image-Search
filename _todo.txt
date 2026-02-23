@@ -1,0 +1,41 @@
+TODO
+	checkbox option: matches must be in different folders
+	right-click path element: select all duplicates in this folder
+	buttons: "clear" & "select all"
+	compare selection to others in cluster (similarity %)
+	pHash (DCT hash)
+	anything with event listeners (Image, FileReader, etc.) need to have listeners nullified when done, otherwise the closures can prevent GC
+	use vue router so user can "go back" to results page before starting a new search
+		for some reason, the results page is caching old results, won't start fresh when doing a second scan
+	turn cluster info into a table
+		Would simplify some of the CSS
+	? VP-Tree for finding matches
+		The current search is already very fast compared to the IO
+	? createBitmapImage, static offscreenCanvas
+		Testing did not yield significant performance gains
+	? run the search in a webworker
+		This would prevent the page from running locally without a server
+		Testing did not yield significant performance gains, probably because the browser already offloads some IO tasks to separate threads
+
+Some minor bug fixes
+	Aspect ratio comparisons allowed width/height to be swapped
+	Error in calculating index for RGB values given row&col, but it didn't glitch out b/c it was consistent
+	normalize() would fill B/W image chroma values with NaN, this would cause chroma comparisons in is_similar() to always pass when comapring any B/W image to any colored image
+Javascript was completely rewritten
+	variables and functions given meaningful, non-random names (de-obfuscated)
+	useless variables removed
+	some encapsulation with a new ImageFile class
+New features
+	accept folders via drag-and-drop, pasting
+	exact matching
+	pause the search and resume
+	display file size and last modification time along with the path
+	highlight images in the results and save your selections to a text file or deletion script
+	click-and-drag to highlight multiple images
+	ctrl-click to copy a file's path to clipboard
+	hide cluster group by clicking number
+	close textarea with escape key
+New features (Electron version)
+    faster searching and thumbnail generation
+    crtl-click to open an image's location in the file browser
+    does not ask for confirmation to start search
