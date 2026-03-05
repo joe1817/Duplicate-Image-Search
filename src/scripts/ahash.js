@@ -1,6 +1,6 @@
 class AHash {
 
-    static async fromBlob(blob, iconDim = 11) {
+	static async fromBlob(blob, iconDim = 11) {
 		// Images will be treated as grids of "blocks", each containing "cells" (pixels).
 		// Images will be compressed into icons with side length "iconDim"
 		const blockDim  = 2 * iconDim + 1;
@@ -11,35 +11,35 @@ class AHash {
 			throw new Error("Invalid iconDim");
 		}
 
-        const img = await this._loadImage(blob);
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
+		const img = await this._loadImage(blob);
+		const canvas = document.createElement("canvas");
+		const ctx = canvas.getContext("2d");
 
-        canvas.width = canvasDim;
-        canvas.height = canvasDim;
+		canvas.width = canvasDim;
+		canvas.height = canvasDim;
 
-        ctx.drawImage(img, 0, 0, canvasDim, canvasDim);
-        let data = ctx.getImageData(0, 0, canvasDim, canvasDim).data;
+		ctx.drawImage(img, 0, 0, canvasDim, canvasDim);
+		let data = ctx.getImageData(0, 0, canvasDim, canvasDim).data;
 		data = this._toGrayscale(data);
 		data = this._boxBlur(data, canvasDim, canvasDim, cellDim, cellDim);
 		data = this._boxBlur(data, blockDim, blockDim, 3, 2);
 		data = this._normalize(data);
 
 		return new AHash(data, img.width, img.height);
-    }
+	}
 
-    static _loadImage(blob) {
-        return new Promise((resolve, reject) => {
-            const url = URL.createObjectURL(blob);
-            const img = new Image();
-            img.onload = () => {
-                URL.revokeObjectURL(url);
-                resolve(img);
-            };
-            img.onerror = reject;
-            img.src = url;
-        });
-    }
+	static _loadImage(blob) {
+		return new Promise((resolve, reject) => {
+			const url = URL.createObjectURL(blob);
+			const img = new Image();
+			img.onload = () => {
+				URL.revokeObjectURL(url);
+				resolve(img);
+			};
+			img.onerror = reject;
+			img.src = url;
+		});
+	}
 
 	static _toGrayscale(data) {
 		let grey = new Array(data.length/4);
@@ -95,21 +95,21 @@ class AHash {
 		return norm;
 	}
 
-    constructor(data, imgWidth, imgHeight) {
-        this.data = data;
+	constructor(data, imgWidth, imgHeight) {
+		this.data = data;
 		this.imgWidth = imgWidth;
 		this.imgHeight = imgHeight;
-    }
+	}
 
-    compare(other) {
+	compare(other) {
 		let dist  = 0;
 		for (let i = 0; i < this.data.length; i++) {
 			dist += (this.data[i] - other.data[i]) ** 2;
 		}
 		return dist
-    }
+	}
 
-    isSimilar(other, dist = 400) {
-        return this.compare(other) <= dist * this.data.length;
-    }
+	isSimilar(other, dist = 400) {
+		return this.compare(other) <= dist * this.data.length;
+	}
 }
