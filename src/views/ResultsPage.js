@@ -259,7 +259,7 @@ const ResultsPage = {
 					cluster.forEach((ifile, fileIndex) => {
 						if (!this.showHighState || this.highlightedCoords.has(`${clusterIndex},${fileIndex}`)) {
 							addedSome = true;
-							let path = ifile.file.webkitRelativePath || ifile.file.name;
+							let path = ifile.relpath;
 							if (onWindows) {
 								path = path.replaceAll("/", "\\");
 							}

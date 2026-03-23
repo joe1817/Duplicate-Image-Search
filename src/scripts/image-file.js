@@ -5,7 +5,7 @@ class ImageFile {
 
 	constructor(file) {
 		this.file       = file;
-		this.relpath    = file.webkitRelativePath || file.name; // webkitRelativePath is "" for top-level dropped files
+		this.relpath    = file.fullRelativePath || file.webkitRelativePath || file.name; // webkitRelativePath is "" for top-level dropped files
 		this.depth      = this.relpath.split("/").length-1; // Forward-slash is used on Windows, too
 		this.type       = null;
 		this.valid      = null;
