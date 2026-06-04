@@ -28,10 +28,10 @@ const ResultsPage = {
 
 			<div>
 				<span v-show="!textareaOn"><span class="text-button noselect" @click="openList">list files</span></span>
-				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><input type="checkbox" id="hide-option" v-model="autoHideState"><label class="noselect" for="hide-option">Auto Hide Selected Clusters</label></span>
+				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><input type="checkbox" id="hide-option" v-model="autoHideState"><label class="noselect" for="hide-option">Auto-Hide Selected Clusters</label></span>
 				<span v-show="textareaOn"><span class="text-button noselect" @click="closeList">[×]</span></span>
 				<span v-show="textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="text-button noselect" @click="copyListToClipboard">copy list</span></span>
-				<span v-show="textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="text-button noselect" @click="downloadList">download list</span></span>
+				<span v-show="textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="text-button noselect" @click="downloadList">{{scriptState ? "download script" : "download list"}}</span></span>
 				<span v-show="textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><input type="checkbox" id="show-high-option" v-model="showHighState"><label class="noselect" for="show-high-option">Show Highlighted Only</label></span>
 				<span v-show="textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><input type="checkbox" id="script-option" v-model="scriptState"><label class="noselect" for="script-option">Deletion Script</label></span>
 			</div>
