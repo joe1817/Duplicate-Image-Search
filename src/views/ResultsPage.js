@@ -30,6 +30,7 @@ const ResultsPage = {
 				<span v-show="textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="text-button noselect" @click="copyListToClipboard">copy list</span></span>
 				<span v-show="textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="text-button noselect" @click="downloadList">{{scriptState ? "download script" : "download list"}}</span></span>
 				<span v-show="textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><input type="checkbox" id="show-high-option" v-model="showHighState"><label class="noselect" for="show-high-option">Show Highlighted Only</label></span>
+				<span v-show="textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><input type="checkbox" id="show-hash-option" v-model="showHashState"><label class="noselect" for="show-hash-option">Show Hashes</label></span>
 				<span v-show="textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><input type="checkbox" id="script-option" v-model="scriptState"><label class="noselect" for="script-option">Deletion Script</label></span>
 			</div>
 
@@ -63,6 +64,7 @@ const ResultsPage = {
 			folderSpanState   : "all",
 			textareaOn        : false,
 			showHighState     : false,
+			showHashState     : false,
 			scriptState       : false,
 			highSize          : 0,
 			messageText       : "",
@@ -261,6 +263,9 @@ const ResultsPage = {
 								} else {
 									path = "rm \"" + path.replaceAll("\"", "\\\"") + "\"";
 								}
+							} else if (this.showHashState) {
+								const hash = parseInt(ifile.hash.bitstring, 2).toString(16).padStart(16, "0");
+								path = hash + " " + path;
 							}
 							text = text.concat(path, "\n");
 						}

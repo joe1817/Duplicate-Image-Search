@@ -31,7 +31,7 @@ class ImageFile {
 		return this.valid;
 	}
 
-	async load(fastRead, exactMatch, phash=AHash) {
+	async load(fastRead, exactMatch, phash=DHash) {
 		if (!exactMatch && fastRead && this.type === "jpeg") {
 			try {
 				const data = await this.readThumbnail();
