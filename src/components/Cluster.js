@@ -47,10 +47,10 @@ function pathDiff(path1, path2) {
 }
 
 const Cluster = {
-	props: ["cluster", "clusterIndex"],
+	props: ["cluster", "clusterIndex", "folderSpanState", "autoHideState"],
 
 	template: `
-<div class="cluster" @mouseup="reset" @mouseleave="reset">
+<div class="cluster" @mouseup="reset" @mouseleave="reset" v-show="matchesFilter">
 	<div ref="num" class="cluster-num" @click="toggleCluster">
 		{{ clusterIndex + 1 }}
 	</div>
@@ -151,7 +151,7 @@ const Cluster = {
 		},
 
 		mouseUpHandler() {
-			if (this.direction && this.highlightedCount && ResultsPageNonReactiveSettings.autoHideState) {
+			if (this.direction && this.highlightedCount && this.autoHideState) {
 				this.toggleCluster();
 			}
 		},
@@ -186,6 +186,26 @@ const Cluster = {
 	},
 
 	computed: {
+		matchesFilter() {
+			if (this.folderSpanState == "all") {
+				return true;
+			}
+			const folderCount = new Set(
+				this.cluster
+				.map(item => {
+					const parts = item.relpath.split("/");
+					parts.pop();
+					return parts.join("/");
+				})
+				.filter(folderPath => folderPath !== "")
+			).size;
+			const folderSpan = folderCount === 1 ? "single" : "multiple";
+			if (folderSpan == this.folderSpanState) {
+				return true;
+			}
+			return false;
+		},
+
 		bestSize() {
 			let bestVal = null, val = null;
 			this.cluster.forEach((ifile) => {

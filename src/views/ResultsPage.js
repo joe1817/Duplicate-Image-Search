@@ -1,7 +1,3 @@
-const ResultsPageNonReactiveSettings = {
-	autoHideState : false,
-}
-
 const ResultsPage = {
 
 	template: `
@@ -29,6 +25,7 @@ const ResultsPage = {
 			<div>
 				<span v-show="!textareaOn"><span class="text-button noselect" @click="openList">list files</span></span>
 				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><input type="checkbox" id="hide-option" v-model="autoHideState"><label class="noselect" for="hide-option">Auto-Hide Selected Clusters</label></span>
+				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="noselect" for="folder-count">Cluster Span: </span><select name="folder-count" id="folder-count" v-model="folderSpanState"><option value="all" default>Any</option><option value="single">Same Folder</option><option value="multiple">Multiple Folders</option></select></span>
 				<span v-show="textareaOn"><span class="text-button noselect" @click="closeList">[×]</span></span>
 				<span v-show="textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="text-button noselect" @click="copyListToClipboard">copy list</span></span>
 				<span v-show="textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="text-button noselect" @click="downloadList">{{scriptState ? "download script" : "download list"}}</span></span>
@@ -47,6 +44,8 @@ const ResultsPage = {
 			ref="cluster"
 			:cluster="cluster"
 			:clusterIndex="index"
+			:folderSpanState="folderSpanState"
+			:autoHideState="autoHideState"
 			@select="selectHandler"
 			@highlight="highlightHandler"
 		></Cluster>
@@ -60,11 +59,13 @@ const ResultsPage = {
 
 	data() {
 		return {
-			textareaOn    : false,
-			showHighState : false,
-			scriptState   : false,
-			highSize      : 0,
-			messageText   : "",
+			autoHideState     : false,
+			folderSpanState   : "all",
+			textareaOn        : false,
+			showHighState     : false,
+			scriptState       : false,
+			highSize          : 0,
+			messageText       : "",
 			highlightedCoords : new Set(),
 		}
 	},
@@ -189,15 +190,6 @@ const ResultsPage = {
 
 		isEnded() {
 			return this.$store.getters.isEnded;
-		},
-
-		autoHideState: {
-			get() {
-				return ResultsPageNonReactiveSettings.autoHideState;
-			},
-			set(val) {
-				ResultsPageNonReactiveSettings.autoHideState = val;
-			}
 		},
 
 		percentDone() {
