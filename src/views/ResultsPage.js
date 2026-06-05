@@ -41,15 +41,17 @@ const ResultsPage = {
 	<div ref="allClusters" id="clusters" class="clusters noselect">
 		<Cluster
 			v-for="(cluster, index) in $store.state.clusters"
+			v-show="matchesFilter(cluster)"
 			:key="cluster[0].relpath"
 			ref="cluster"
 			:cluster="cluster"
 			:clusterIndex="index"
 			:highlightedIndices="highlightedCoords.get(index) || new Set()"
-			:folderSpanState="folderSpanState"
-			:autoHideState="autoHideState"
-			@select="selectHandler"
+			:collapsed="collapsedClusters.has(index)"
+			@ctrlClick="ctrlClickHandler"
 			@highlight="highlightHandler"
+			@select="selectHandler"
+			@toggle="toggleHandler"
 		></Cluster>
 	</div>
 
@@ -71,6 +73,7 @@ const ResultsPage = {
 			highSize          : 0,
 			messageText       : "",
 			highlightedCoords : new Map(),
+			collapsedClusters : new Set(),
 		}
 	},
 
@@ -124,12 +127,26 @@ const ResultsPage = {
 				}
 			} else {
 				this.highlightedCoords.get(clusterIndex).delete(fileIndex);
-				
+
 				this.highCount -= 1;
 				this.highSize -= this.$store.state.clusters[clusterIndex][fileIndex].file.size;
 				if (!this.textareaOn && !this.highCount) {
 					this.showHighState = false;
 				}
+			}
+		},
+
+		selectHandler(clusterIndex, direction) {
+			if (direction && this.autoHideState) {
+				this.collapsedClusters.add(clusterIndex);
+			}
+		},
+
+		toggleHandler(clusterIndex) {
+			if (this.collapsedClusters.has(clusterIndex)) {
+				this.collapsedClusters.delete(clusterIndex);
+			} else {
+				this.collapsedClusters.add(clusterIndex);
 			}
 		},
 
@@ -173,7 +190,27 @@ const ResultsPage = {
 					window.URL.revokeObjectURL(url);
 				}, 0);
 			}
-		}
+		},
+
+		matchesFilter(cluster) {
+			if (this.folderSpanState == "all") {
+				return true;
+			}
+			const folderCount = new Set(
+				cluster
+				.map(item => {
+					const parts = item.relpath.split("/");
+					parts.pop();
+					return parts.join("/");
+				})
+				.filter(folderPath => folderPath !== "")
+			).size;
+			const folderSpan = folderCount === 1 ? "single" : "multiple";
+			if (folderSpan == this.folderSpanState) {
+				return true;
+			}
+			return false;
+		},
 	},
 
 	computed: {

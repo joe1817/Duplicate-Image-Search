@@ -47,15 +47,22 @@ function pathDiff(path1, path2) {
 }
 
 const Cluster = {
-	props: ["cluster", "clusterIndex", "highlightedIndices",         "folderSpanState", "autoHideState"], // "collapsed"
+	props: ["cluster", "clusterIndex", "highlightedIndices", "collapsed"],
 
 	template: `
-<div class="cluster" @mouseup="reset" @mouseleave="reset" v-show="matchesFilter">
+<div
+	:class="{
+		'cluster': true,
+		'collapsed': collapsed,
+	}"
+	@mouseup="reset"
+	@mouseleave="reset"
+>
 	<div
 		:class="{
-			'cluster-num':true,
+			'cluster-num': true,
 			'some-selected': cluster.length !== highlightedIndices.size && highlightedIndices.size > 0,
-			'all-selected': cluster.length === highlightedIndices.size
+			'all-selected': cluster.length === highlightedIndices.size,
 		}"
 		@click="toggleCluster"
 	>
@@ -68,8 +75,8 @@ const Cluster = {
 				:key="ifile.relpath"
 				:ifile="ifile"
 				:class="{
-					'div-img':true,
-					'highlighted': highlightedIndices.has(fileIndex)
+					'div-img': true,
+					'highlighted': highlightedIndices.has(fileIndex),
 				}"
 				ref="imgs"
 				@mouseenter="mouseenterHandler($event, fileIndex)"
@@ -83,8 +90,8 @@ const Cluster = {
 				v-for="(ifile, fileIndex) in cluster"
 				:key="ifile.relpath"
 				:class="{
-					'img-info':true,
-					'highlighted': highlightedIndices.has(fileIndex)
+					'img-info': true,
+					'highlighted': highlightedIndices.has(fileIndex),
 				}"
 				ref="info"
 				@mouseenter="mouseenterHandler($event, fileIndex)"
@@ -138,9 +145,9 @@ const Cluster = {
 			if (isMouseDown) {
 				if (this.direction === null) {
 					this.direction = !this.highlightedIndices.has(fileIndex);
-					this.$emit("highlight", this.direction, `${this.clusterIndex},${fileIndex}`);
+					this.$emit("highlight", this.direction, this.clusterIndex, fileIndex);
 				} else if (this.direction === !this.highlightedIndices.has(fileIndex)) {
-					this.$emit("highlight", this.direction, `${this.clusterIndex},${fileIndex}`);
+					this.$emit("highlight", this.direction, this.clusterIndex, fileIndex);
 				}
 			}
 		},
@@ -153,46 +160,25 @@ const Cluster = {
 		mousedownHandler(event, fileIndex) {
 			if (event.ctrlKey) {
 				event.stopPropagation();
-				this.$emit("select", this.cluster[fileIndex]);
+				this.$emit("ctrlClick", this.cluster[fileIndex]);
 			} else {
 				if (this.direction === null) {
 					this.direction = !this.highlightedIndices.has(fileIndex);
-					this.$emit("highlight", this.direction, `${this.clusterIndex},${fileIndex}`);
+					this.$emit("highlight", this.direction, this.clusterIndex, fileIndex);
 				}
 			}
 		},
 
 		mouseUpHandler() {
-			if (this.direction && this.autoHideState) {
-				this.toggleCluster();
-			}
+			this.$emit("select", this.clusterIndex, this.direction);
 		},
 
 		toggleCluster() {
-			this.$el.classList.toggle("collapsed");
-		}
+			this.$emit("toggle", this.clusterIndex);
+		},
 	},
 
 	computed: {
-		matchesFilter() {
-			if (this.folderSpanState == "all") {
-				return true;
-			}
-			const folderCount = new Set(
-				this.cluster
-				.map(item => {
-					const parts = item.relpath.split("/");
-					parts.pop();
-					return parts.join("/");
-				})
-				.filter(folderPath => folderPath !== "")
-			).size;
-			const folderSpan = folderCount === 1 ? "single" : "multiple";
-			if (folderSpan == this.folderSpanState) {
-				return true;
-			}
-			return false;
-		},
 
 		bestSize() {
 			let bestVal = null, val = null;
