@@ -25,7 +25,7 @@ const ResultsPage = {
 			<div>
 				<span v-show="!textareaOn"><span class="text-button noselect" @click="openList">list files</span></span>
 				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><input type="checkbox" id="hide-option" v-model="autoHideState"><label class="noselect" for="hide-option">Auto-Hide Selected Clusters</label></span>
-				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="noselect" for="folder-count">Cluster Span: </span><select name="folder-count" id="folder-count" v-model="folderSpanState"><option value="all" default>Any</option><option value="single">Same Folder</option><option value="multiple">Multiple Folders</option></select></span>
+				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="noselect" for="folder-count">Cluster Span: </span><select name="folder-count" id="folder-count" v-model="clusterSpanState"><option value="any" default>Any</option><option value="single">Single Folder</option><option value="multiple">Multiple Folders</option></select></span>
 				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="text-button noselect" @click="highlightAll">highlight all</span></span>
 				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="text-button noselect" @click="highlightNone">highlight none</span></span>
 				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="text-button noselect" @click="collapseAll">collapse all</span></span>
@@ -70,7 +70,7 @@ const ResultsPage = {
 	data() {
 		return {
 			autoHideState     : false,
-			folderSpanState   : "all",
+			clusterSpanState  : "any",
 			textareaOn        : false,
 			showHighState     : false,
 			showHashState     : false,
@@ -230,7 +230,7 @@ const ResultsPage = {
 		},
 
 		matchesFilter(cluster) {
-			if (this.folderSpanState == "all") {
+			if (this.clusterSpanState == "any") {
 				return true;
 			}
 			const folderCount = new Set(
@@ -242,8 +242,8 @@ const ResultsPage = {
 				})
 				.filter(folderPath => folderPath !== "")
 			).size;
-			const folderSpan = folderCount === 1 ? "single" : "multiple";
-			if (folderSpan == this.folderSpanState) {
+			const clusterSpan = folderCount === 1 ? "single" : "multiple";
+			if (clusterSpan == this.clusterSpanState) {
 				return true;
 			}
 			return false;
