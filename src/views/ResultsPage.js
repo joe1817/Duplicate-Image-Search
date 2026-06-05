@@ -26,6 +26,12 @@ const ResultsPage = {
 				<span v-show="!textareaOn"><span class="text-button noselect" @click="openList">list files</span></span>
 				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><input type="checkbox" id="hide-option" v-model="autoHideState"><label class="noselect" for="hide-option">Auto-Hide Selected Clusters</label></span>
 				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="noselect" for="folder-count">Cluster Span: </span><select name="folder-count" id="folder-count" v-model="folderSpanState"><option value="all" default>Any</option><option value="single">Same Folder</option><option value="multiple">Multiple Folders</option></select></span>
+				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="text-button noselect" @click="highlightAll">highlight all</span></span>
+				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="text-button noselect" @click="highlightNone">highlight none</span></span>
+				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="text-button noselect" @click="collapseAll">collapse all</span></span>
+				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="text-button noselect" @click="collapseNone">expand all</span></span>
+
+
 				<span v-show="textareaOn"><span class="text-button noselect" @click="closeList">[×]</span></span>
 				<span v-show="textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="text-button noselect" @click="copyListToClipboard">copy list</span></span>
 				<span v-show="textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="text-button noselect" @click="downloadList">{{scriptState ? "download script" : "download list"}}</span></span>
@@ -73,7 +79,7 @@ const ResultsPage = {
 			highSize          : 0,
 			messageText       : "",
 			highlightedCoords : new Map(),
-			collapsedClusters : new Set(),
+			collapsedClusters : new Set(), // might be more performant to have a Map: index -> collapsedState (bool)
 		}
 	},
 
@@ -162,6 +168,37 @@ const ResultsPage = {
 
 		closeList() {
 			this.textareaOn = false;
+		},
+
+		highlightAll() {
+			this.highCount = 0;
+			this.highSize = 0;
+			for (const [clusterIndex, cluster] of this.$store.state.clusters.entries()) {
+				for (const [imageIndex, ifile] of cluster.entries()) {
+					if (!this.highlightedCoords.has(clusterIndex)) {
+						this.highlightedCoords.set(clusterIndex, new Set());
+					}
+					this.highCount += 1;
+					this.highSize += ifile.file.size;
+					this.highlightedCoords.get(clusterIndex).add(imageIndex);
+				}
+			}
+		},
+
+		highlightNone() {
+			this.highCount = 0;
+			this.highSize = 0;
+			this.highlightedCoords.clear();
+		},
+
+		collapseAll() {
+			for (const [clusterIndex, cluster] of this.$store.state.clusters.entries()) {
+				this.collapsedClusters.add(clusterIndex);
+			}
+		},
+
+		collapseNone() {
+			this.collapsedClusters.clear();
 		},
 
 		copyListToClipboard() {
