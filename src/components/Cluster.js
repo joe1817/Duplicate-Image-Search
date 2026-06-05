@@ -61,8 +61,8 @@ const Cluster = {
 	<div
 		:class="{
 			'cluster-num': true,
-			'some-selected': cluster.length !== highlightedIndices.size && highlightedIndices.size > 0,
-			'all-selected': cluster.length === highlightedIndices.size,
+			'some-selected': cluster.ifiles.length !== highlightedIndices.size && highlightedIndices.size > 0,
+			'all-selected': cluster.ifiles.length === highlightedIndices.size,
 		}"
 		@click="toggleCluster"
 	>
@@ -71,7 +71,7 @@ const Cluster = {
 	<div ref="clusterContent" class="cluster-content" @mouseup="mouseUpHandler">
 		<div class="cluster-imgs">
 			<Thumbnail
-				v-for="(ifile, fileIndex) in cluster"
+				v-for="(ifile, fileIndex) in cluster.ifiles"
 				:key="ifile.relpath"
 				:ifile="ifile"
 				:class="{
@@ -87,7 +87,7 @@ const Cluster = {
 
 		<div class="cluster-info">
 			<div
-				v-for="(ifile, fileIndex) in cluster"
+				v-for="(ifile, fileIndex) in cluster.ifiles"
 				:key="ifile.relpath"
 				:class="{
 					'img-info': true,
@@ -145,9 +145,9 @@ const Cluster = {
 			if (isMouseDown) {
 				if (this.direction === null) {
 					this.direction = !this.highlightedIndices.has(fileIndex);
-					this.$emit("highlight", this.direction, this.clusterIndex, fileIndex);
+					this.$emit("highlight", this.direction, this.cluster.ID, fileIndex);
 				} else if (this.direction === !this.highlightedIndices.has(fileIndex)) {
-					this.$emit("highlight", this.direction, this.clusterIndex, fileIndex);
+					this.$emit("highlight", this.direction, this.cluster.ID, fileIndex);
 				}
 			}
 		},
@@ -160,21 +160,21 @@ const Cluster = {
 		mousedownHandler(event, fileIndex) {
 			if (event.ctrlKey) {
 				event.stopPropagation();
-				this.$emit("ctrlClick", this.cluster[fileIndex]);
+				this.$emit("ctrlClick", this.cluster.ifiles[fileIndex]);
 			} else {
 				if (this.direction === null) {
 					this.direction = !this.highlightedIndices.has(fileIndex);
-					this.$emit("highlight", this.direction, this.clusterIndex, fileIndex);
+					this.$emit("highlight", this.direction, this.cluster.ID, fileIndex);
 				}
 			}
 		},
 
 		mouseUpHandler() {
-			this.$emit("select", this.clusterIndex, this.direction);
+			this.$emit("select", this.cluster.ID, this.direction);
 		},
 
 		toggleCluster() {
-			this.$emit("toggle", this.clusterIndex);
+			this.$emit("toggle", this.cluster.ID);
 		},
 	},
 
@@ -182,7 +182,7 @@ const Cluster = {
 
 		bestSize() {
 			let bestVal = null, val = null;
-			this.cluster.forEach((ifile) => {
+			this.cluster.ifiles.forEach((ifile) => {
 				const val = parseInt(ifile.file.size/1024);
 				if (bestVal === null || val > bestVal) {
 					bestVal = val;
@@ -193,7 +193,7 @@ const Cluster = {
 
 		bestDate() {
 			let bestVal = null, val = null;
-			this.cluster.forEach((ifile) => {
+			this.cluster.ifiles.forEach((ifile) => {
 				const val = this.formatDate(new Date(ifile.file.lastModified));
 				if (bestVal === null || val > bestVal) {
 					bestVal = val;

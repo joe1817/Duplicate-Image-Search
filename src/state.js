@@ -81,11 +81,11 @@ const State = {
 		},
 
 		CREATE_CLUSTER(state) {
-			state.clusters.push([]);
+			state.clusters.push({ID:state.clusters.length, ifiles:[]});
 		},
 
 		ADD_TO_CLUSTER(state, payload) {
-			state.clusters[payload.index].push(payload.ifile);
+			state.clusters[payload.ID].ifiles.push(payload.ifile);
 		},
 	},
 
@@ -190,16 +190,16 @@ const State = {
 
 							if (mustMatch && state.clusters.length == 0) {
 								commit("CREATE_CLUSTER");
-								commit("ADD_TO_CLUSTER", {index:0, ifile:ifile});
+								commit("ADD_TO_CLUSTER", {ID:0, ifile:ifile});
 								ifile.clusterID = 0;
 							} else if (i === null && j === null) {
 								ifile.clusterID = state.clusters.length;
 								ifile2.clusterID = state.clusters.length;
 								commit("CREATE_CLUSTER");
-								commit("ADD_TO_CLUSTER", {index:state.clusters.length-1, ifile:ifile2});
-								commit("ADD_TO_CLUSTER", {index:state.clusters.length-1, ifile:ifile});
+								commit("ADD_TO_CLUSTER", {ID:state.clusters.length-1, ifile:ifile2});
+								commit("ADD_TO_CLUSTER", {ID:state.clusters.length-1, ifile:ifile});
 							} else {
-								commit("ADD_TO_CLUSTER", {index:j, ifile:ifile});
+								commit("ADD_TO_CLUSTER", {ID:j, ifile:ifile});
 								ifile.clusterID = j;
 							}
 							break;

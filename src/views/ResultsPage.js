@@ -26,9 +26,9 @@ const ResultsPage = {
 				<span v-show="!textareaOn"><span class="text-button noselect" @click="openList">list files</span></span>
 				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><input type="checkbox" id="hide-option" v-model="autoHideState"><label class="noselect" for="hide-option">Auto-Hide Selected Clusters</label></span>
 				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="noselect" for="folder-count">Cluster Span: </span><select name="folder-count" id="folder-count" v-model="clusterSpanState"><option value="any" default>Any</option><option value="single">Single Folder</option><option value="multiple">Multiple Folders</option></select></span>
-				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="text-button noselect" @click="highlightAll">highlight all</span></span>
+				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="text-button noselect" @click="highlightVisible">highlight all</span></span>
 				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="text-button noselect" @click="highlightNone">highlight none</span></span>
-				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="text-button noselect" @click="collapseAll">collapse all</span></span>
+				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="text-button noselect" @click="collapseVisible">collapse all</span></span>
 				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="text-button noselect" @click="collapseNone">expand all</span></span>
 
 
@@ -48,7 +48,7 @@ const ResultsPage = {
 		<Cluster
 			v-for="(cluster, index) in $store.state.clusters"
 			v-show="matchesFilter(cluster)"
-			:key="cluster[0].relpath"
+			:key="cluster.ID"
 			ref="cluster"
 			:cluster="cluster"
 			:clusterIndex="index"
@@ -119,40 +119,40 @@ const ResultsPage = {
 			this.copyToClipboard(ifile.file.name);
 		},
 
-		highlightHandler(direction, clusterIndex, fileIndex) {
+		highlightHandler(direction, clusterID, fileIndex) {
 			if (direction) {
-				if (!this.highlightedCoords.has(clusterIndex)) {
-					this.highlightedCoords.set(clusterIndex, new Set());
+				if (!this.highlightedCoords.has(clusterID)) {
+					this.highlightedCoords.set(clusterID, new Set());
 				}
-				this.highlightedCoords.get(clusterIndex).add(fileIndex);
+				this.highlightedCoords.get(clusterID).add(fileIndex);
 
 				this.highCount += 1;
-				this.highSize += this.$store.state.clusters[clusterIndex][fileIndex].file.size;
+				this.highSize += this.$store.state.clusters[clusterID].ifiles[fileIndex].file.size;
 				if (!this.textareaOn && this.highCount == 1) {
 					this.showHighState = true;
 				}
 			} else {
-				this.highlightedCoords.get(clusterIndex).delete(fileIndex);
+				this.highlightedCoords.get(clusterID).delete(fileIndex);
 
 				this.highCount -= 1;
-				this.highSize -= this.$store.state.clusters[clusterIndex][fileIndex].file.size;
+				this.highSize -= this.$store.state.clusters[clusterID].ifiles[fileIndex].file.size;
 				if (!this.textareaOn && !this.highCount) {
 					this.showHighState = false;
 				}
 			}
 		},
 
-		selectHandler(clusterIndex, direction) {
+		selectHandler(clusterID, direction) {
 			if (direction && this.autoHideState) {
-				this.collapsedClusters.add(clusterIndex);
+				this.collapsedClusters.add(clusterID);
 			}
 		},
 
-		toggleHandler(clusterIndex) {
-			if (this.collapsedClusters.has(clusterIndex)) {
-				this.collapsedClusters.delete(clusterIndex);
+		toggleHandler(clusterID) {
+			if (this.collapsedClusters.has(clusterID)) {
+				this.collapsedClusters.delete(clusterID);
 			} else {
-				this.collapsedClusters.add(clusterIndex);
+				this.collapsedClusters.add(clusterID);
 			}
 		},
 
@@ -170,17 +170,18 @@ const ResultsPage = {
 			this.textareaOn = false;
 		},
 
-		highlightAll() {
-			this.highCount = 0;
-			this.highSize = 0;
-			for (const [clusterIndex, cluster] of this.$store.state.clusters.entries()) {
-				for (const [imageIndex, ifile] of cluster.entries()) {
-					if (!this.highlightedCoords.has(clusterIndex)) {
-						this.highlightedCoords.set(clusterIndex, new Set());
+		highlightVisible() {
+			for (const cluster of this.visibleClusters) {
+				if (!this.highlightedCoords.has(cluster.ID)) {
+					this.highlightedCoords.set(cluster.ID, new Set());
+				}
+				const highlightedFileIndices = this.highlightedCoords.get(cluster.ID);
+				for (const [imageIndex, ifile] of cluster.ifiles.entries()) {
+					if (!highlightedFileIndices.has(imageIndex)) {
+						this.highCount += 1;
+						this.highSize += ifile.file.size;
+						highlightedFileIndices.add(imageIndex);
 					}
-					this.highCount += 1;
-					this.highSize += ifile.file.size;
-					this.highlightedCoords.get(clusterIndex).add(imageIndex);
 				}
 			}
 		},
@@ -191,9 +192,9 @@ const ResultsPage = {
 			this.highlightedCoords.clear();
 		},
 
-		collapseAll() {
-			for (const [clusterIndex, cluster] of this.$store.state.clusters.entries()) {
-				this.collapsedClusters.add(clusterIndex);
+		collapseVisible() {
+			for (const cluster of this.visibleClusters) {
+				this.collapsedClusters.add(cluster.ID);
 			}
 		},
 
@@ -234,7 +235,7 @@ const ResultsPage = {
 				return true;
 			}
 			const folderCount = new Set(
-				cluster
+				cluster.ifiles
 				.map(item => {
 					const parts = item.relpath.split("/");
 					parts.pop();
@@ -251,6 +252,29 @@ const ResultsPage = {
 	},
 
 	computed: {
+
+		visibleClusters() {
+			if (this.clusterSpanState == "any") {
+				return this.$store.state.clusters;
+			}
+
+			clusterSpan = (cluster) => {
+				const folderCount = new Set(
+					cluster.ifiles
+					.map(item => {
+						const parts = item.relpath.split("/");
+						parts.pop();
+						return parts.join("/");
+					})
+					.filter(folderPath => folderPath !== "")
+				).size;
+				return folderCount === 1 ? "single" : "multiple";
+			}
+
+			return this.$store.state.clusters.filter(cluster => {
+				return clusterSpan(cluster) == this.clusterSpanState;
+			});
+		},
 
 		isInitializing() {
 			return this.$store.getters.isInitializing;
@@ -329,11 +353,11 @@ const ResultsPage = {
 				if (this.scriptState) {
 					text = text.concat(onWindows ? "" : "#!/bin/bash\n\n");
 				}
-				this.$store.state.clusters.forEach((cluster, clusterIndex) => {
-					if (!this.showHighState || this.highlightedCoords.has(clusterIndex)) {
+				this.$store.state.clusters.forEach(cluster => {
+					if (!this.showHighState || this.highlightedCoords.has(cluster.ID)) {
 						let addedSome = false;
-						cluster.forEach((ifile, fileIndex) => {
-							if (!this.showHighState || this.highlightedCoords.get(clusterIndex).has(fileIndex)) {
+						cluster.ifiles.forEach((ifile, fileIndex) => {
+							if (!this.showHighState || this.highlightedCoords.get(cluster.ID).has(fileIndex)) {
 								addedSome = true;
 								let path = ifile.relpath;
 								if (onWindows) {
