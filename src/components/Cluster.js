@@ -47,11 +47,18 @@ function pathDiff(path1, path2) {
 }
 
 const Cluster = {
-	props: ["cluster", "clusterIndex", "folderSpanState", "autoHideState"],
+	props: ["cluster", "clusterIndex", "highlightedIndices",         "folderSpanState", "autoHideState"], // "collapsed"
 
 	template: `
 <div class="cluster" @mouseup="reset" @mouseleave="reset" v-show="matchesFilter">
-	<div ref="num" class="cluster-num" @click="toggleCluster">
+	<div
+		:class="{
+			'cluster-num':true,
+			'some-selected': cluster.length !== highlightedIndices.size && highlightedIndices.size > 0,
+			'all-selected': cluster.length === highlightedIndices.size
+		}"
+		@click="toggleCluster"
+	>
 		{{ clusterIndex + 1 }}
 	</div>
 	<div ref="clusterContent" class="cluster-content" @mouseup="mouseUpHandler">
@@ -60,11 +67,14 @@ const Cluster = {
 				v-for="(ifile, fileIndex) in cluster"
 				:key="ifile.relpath"
 				:ifile="ifile"
+				:class="{
+					'div-img':true,
+					'highlighted': highlightedIndices.has(fileIndex)
+				}"
 				ref="imgs"
-				class="div-img"
-				@mouseenter="mouseenterHandler($event, clusterIndex, fileIndex)"
-				@mouseleave ="mouseleaveHandler($event, clusterIndex, fileIndex)"
-				@mousedown="mousedownHandler($event, clusterIndex, fileIndex)"
+				@mouseenter="mouseenterHandler($event, fileIndex)"
+				@mouseleave ="mouseleaveHandler($event, fileIndex)"
+				@mousedown="mousedownHandler($event, fileIndex)"
 			></Thumbnail>
 		</div>
 
@@ -72,11 +82,14 @@ const Cluster = {
 			<div
 				v-for="(ifile, fileIndex) in cluster"
 				:key="ifile.relpath"
+				:class="{
+					'img-info':true,
+					'highlighted': highlightedIndices.has(fileIndex)
+				}"
 				ref="info"
-				class="img-info"
-				@mouseenter="mouseenterHandler($event, clusterIndex, fileIndex)"
-				@mouseleave ="mouseleaveHandler($event, clusterIndex, fileIndex)"
-				@mousedown="mousedownHandler($event, clusterIndex, fileIndex)"
+				@mouseenter="mouseenterHandler($event, fileIndex)"
+				@mouseleave ="mouseleaveHandler($event, fileIndex)"
+				@mousedown="mousedownHandler($event, fileIndex)"
 				:title="ifile.relpath"
 			>
 				<span ref="size" :class="['img-info-part', 'size', {'best-part': (parseInt(ifile.file.size/1024) == bestSize) }]">{{ parseInt(ifile.file.size/1024) }}</span>
@@ -90,8 +103,7 @@ const Cluster = {
 
 	data() {
 		return {
-			highlightedCount : 0,
-			direction		: null,
+			direction : null,
 		}
 	},
 
@@ -119,64 +131,40 @@ const Cluster = {
 			this.direction = null;
 		},
 
-		mouseenterHandler(event, clusterIndex, fileIndex) {
+		mouseenterHandler(event, fileIndex) {
 			this.$refs.info[fileIndex].classList.add("hovered");
 			this.$refs.imgs[fileIndex].$el.classList.add("hovered");
 			const isMouseDown = event.buttons == 1;
 			if (isMouseDown) {
 				if (this.direction === null) {
-					this.direction = !this.isHighlighted(fileIndex);
-					this.toggleHighlight(clusterIndex, fileIndex);
-				} else if (this.direction === !this.isHighlighted(fileIndex)) {
-					this.toggleHighlight(clusterIndex, fileIndex);
+					this.direction = !this.highlightedIndices.has(fileIndex);
+					this.$emit("highlight", this.direction, `${this.clusterIndex},${fileIndex}`);
+				} else if (this.direction === !this.highlightedIndices.has(fileIndex)) {
+					this.$emit("highlight", this.direction, `${this.clusterIndex},${fileIndex}`);
 				}
 			}
 		},
 
-		mouseleaveHandler(event, clusterIndex, fileIndex) {
+		mouseleaveHandler(event, fileIndex) {
 			this.$refs.info[fileIndex].classList.remove("hovered");
 			this.$refs.imgs[fileIndex].$el.classList.remove("hovered");
 		},
 
-		mousedownHandler(event, clusterIndex, fileIndex) {
+		mousedownHandler(event, fileIndex) {
 			if (event.ctrlKey) {
 				event.stopPropagation();
 				this.$emit("select", this.cluster[fileIndex]);
 			} else {
 				if (this.direction === null) {
-					this.direction = !this.isHighlighted(fileIndex);
-					this.toggleHighlight(clusterIndex, fileIndex);
+					this.direction = !this.highlightedIndices.has(fileIndex);
+					this.$emit("highlight", this.direction, `${this.clusterIndex},${fileIndex}`);
 				}
 			}
 		},
 
 		mouseUpHandler() {
-			if (this.direction && this.highlightedCount && this.autoHideState) {
+			if (this.direction && this.autoHideState) {
 				this.toggleCluster();
-			}
-		},
-
-		isHighlighted(fileIndex) {
-			return this.$refs.info[fileIndex].classList.contains("highlighted");
-		},
-
-		toggleHighlight(clusterIndex, fileIndex) {
-			this.$refs.info[fileIndex].classList.toggle("highlighted");
-			this.$refs.imgs[fileIndex].$el.classList.toggle("highlighted");
-			if (this.isHighlighted(fileIndex)) {
-				this.highlightedCount++;
-				this.$refs.num.classList.add("some-selected");
-				if (this.highlightedCount == this.$refs.imgs.length) {
-					this.$refs.num.classList.add("all-selected");
-				}
-				this.$emit("highlight", true, `${clusterIndex},${fileIndex}`);
-			} else {
-				this.highlightedCount--;
-				this.$refs.num.classList.remove("all-selected");
-				if (this.highlightedCount == 0) {
-					this.$refs.num.classList.remove("some-selected");
-				}
-				this.$emit("highlight", false, `${clusterIndex},${fileIndex}`);
 			}
 		},
 

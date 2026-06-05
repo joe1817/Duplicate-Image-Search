@@ -45,6 +45,7 @@ const ResultsPage = {
 			ref="cluster"
 			:cluster="cluster"
 			:clusterIndex="index"
+			:highlightedIndices="highlightedCoords.get(index) || new Set()"
 			:folderSpanState="folderSpanState"
 			:autoHideState="autoHideState"
 			@select="selectHandler"
@@ -66,9 +67,10 @@ const ResultsPage = {
 			showHighState     : false,
 			showHashState     : false,
 			scriptState       : false,
+			highCount         : 0,
 			highSize          : 0,
 			messageText       : "",
-			highlightedCoords : new Set(),
+			highlightedCoords : new Map(),
 		}
 	},
 
@@ -104,23 +106,28 @@ const ResultsPage = {
 			this.isPaused = !this.isPaused;
 		},
 
-		selectHandler(ifile) {
-			this.copyToClipboard(ifile.relpath);
+		ctrlClickHandler(ifile) {
+			this.copyToClipboard(ifile.file.name);
 		},
 
-		highlightHandler(highlightOn, coords) {
-			if (highlightOn) {
-				this.highlightedCoords.add(coords);
-				const [clusterIndex, fileIndex] = coords.split(",").map(Number);
+		highlightHandler(direction, clusterIndex, fileIndex) {
+			if (direction) {
+				if (!this.highlightedCoords.has(clusterIndex)) {
+					this.highlightedCoords.set(clusterIndex, new Set());
+				}
+				this.highlightedCoords.get(clusterIndex).add(fileIndex);
+
+				this.highCount += 1;
 				this.highSize += this.$store.state.clusters[clusterIndex][fileIndex].file.size;
-				if (!this.textareaOn && this.highlightedCoords.size == 1) {
+				if (!this.textareaOn && this.highCount == 1) {
 					this.showHighState = true;
 				}
 			} else {
-				this.highlightedCoords.delete(coords);
-				const [clusterIndex, fileIndex] = coords.split(",").map(Number);
+				this.highlightedCoords.get(clusterIndex).delete(fileIndex);
+				
+				this.highCount -= 1;
 				this.highSize -= this.$store.state.clusters[clusterIndex][fileIndex].file.size;
-				if (!this.textareaOn && !this.highlightedCoords.size) {
+				if (!this.textareaOn && !this.highCount) {
 					this.showHighState = false;
 				}
 			}
@@ -209,7 +216,7 @@ const ResultsPage = {
 			const c = this.$store.state.clusters.length;
 			const n = this.$store.state.progress;
 			const t = this.$store.state.progressTotal;
-			const h = this.highlightedCoords.size;
+			const h = this.highCount;
 			const s = this.formatBytes(this.highSize);
 			if (this.isInitializing) {
 				const i = this.$store.state.inputCount;
@@ -249,29 +256,31 @@ const ResultsPage = {
 					text = text.concat(onWindows ? "" : "#!/bin/bash\n\n");
 				}
 				this.$store.state.clusters.forEach((cluster, clusterIndex) => {
-					let addedSome = false;
-					cluster.forEach((ifile, fileIndex) => {
-						if (!this.showHighState || this.highlightedCoords.has(`${clusterIndex},${fileIndex}`)) {
-							addedSome = true;
-							let path = ifile.relpath;
-							if (onWindows) {
-								path = path.replaceAll("/", "\\");
-							}
-							if (this.scriptState) {
+					if (!this.showHighState || this.highlightedCoords.has(clusterIndex)) {
+						let addedSome = false;
+						cluster.forEach((ifile, fileIndex) => {
+							if (!this.showHighState || this.highlightedCoords.get(clusterIndex).has(fileIndex)) {
+								addedSome = true;
+								let path = ifile.relpath;
 								if (onWindows) {
-									path = "del \"" + path.replaceAll("\"", "\\\"") + "\"";
-								} else {
-									path = "rm \"" + path.replaceAll("\"", "\\\"") + "\"";
+									path = path.replaceAll("/", "\\");
 								}
-							} else if (this.showHashState) {
-								const hash = parseInt(ifile.hash.bitstring, 2).toString(16).padStart(16, "0");
-								path = hash + " " + path;
+								if (this.scriptState) {
+									if (onWindows) {
+										path = "del \"" + path.replaceAll("\"", "\\\"") + "\"";
+									} else {
+										path = "rm \"" + path.replaceAll("\"", "\\\"") + "\"";
+									}
+								} else if (this.showHashState) {
+									const hash = parseInt(ifile.hash.bitstring, 2).toString(16).padStart(16, "0");
+									path = hash + " " + path;
+								}
+								text = text.concat(path, "\n");
 							}
-							text = text.concat(path, "\n");
+						});
+						if (addedSome) {
+							text = text.concat("\n");
 						}
-					});
-					if (addedSome) {
-						text = text.concat("\n");
 					}
 				});
 				if (this.scriptState) {
