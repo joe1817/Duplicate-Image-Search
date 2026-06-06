@@ -173,7 +173,7 @@ const Cluster = {
 		},
 
 		mouseUpHandler() {
-			this.$emit("select", this.cluster.ID, this.direction);
+			this.$emit("select", this.cluster);
 		},
 
 		toggleCluster() {
@@ -187,7 +187,6 @@ const Cluster = {
 	},
 
 	computed: {
-
 		bestSize() {
 			let bestVal = null, val = null;
 			this.cluster.ifiles.forEach((ifile) => {

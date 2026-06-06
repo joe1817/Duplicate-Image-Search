@@ -24,10 +24,10 @@ const ResultsPage = {
 
 			<div>
 				<span v-show="!textareaOn"><span class="text-button noselect" @click="openList">list files</span></span>
-				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><input type="checkbox" id="hide-option" v-model="autoHideState"><label class="noselect" for="hide-option">Auto-Hide Selected Clusters</label></span>
-				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="noselect" for="folder-count">Cluster Span: </span><select name="folder-count" id="folder-count" v-model="clusterSpanState"><option value="any" default>Any</option><option value="single">Single Folder</option><option value="multiple">Multiple Folders</option></select></span>
-				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="text-button noselect" @click="highlightVisible(null)">highlight all</span></span>
-				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="text-button noselect" @click="highlightNone">highlight none</span></span>
+				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="noselect">Cluster Span: </span><select name="folder-count" id="folder-count" v-model="clusterSpanState"><option value="any" default>Any</option><option value="single">Single Folder</option><option value="multiple">Multiple Folders</option></select></span>
+				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="noselect">Auto-Collapse: </span><select name="auto-collapse" id="auto-collapse" v-model="autoCollapseState"><option value="none" default>-</option><option value="any">Any Selected</option><option value="almost-all">All But 1 Selected</option></select></span>
+				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="text-button noselect" @click="selectVisible(null)">select all</span></span>
+				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="text-button noselect" @click="selectNone">select none</span></span>
 				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="text-button noselect" @click="collapseVisible">collapse all</span></span>
 				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="text-button noselect" @click="collapseNone">expand all</span></span>
 
@@ -47,13 +47,13 @@ const ResultsPage = {
 	<div ref="allClusters" id="clusters" class="clusters noselect">
 		<Cluster
 			v-for="(cluster, index) in $store.state.clusters"
-			v-show="matchesFilter(cluster)"
+			v-show="clusterIsVisible(cluster)"
 			:key="cluster.ID"
 			ref="cluster"
 			:cluster="cluster"
 			:clusterIndex="index"
 			:highlightedIndices="highlightedCoords.get(index) || new Set()"
-			:collapsed="collapsedClusters.has(index)"
+			:collapsed="clusterIsCollapsed(cluster)"
 			@ctrlClick="ctrlClickHandler"
 			@highlight="highlightHandler"
 			@select="selectHandler"
@@ -76,7 +76,7 @@ const ResultsPage = {
 	>
 		<ul>
 			<li @click="copyFilenameHandler">Copy File Name</li>
-			<li @click="highlightSameFolderHandler">Highlight All Files in this Folder</li>
+			<li @click="selectSameFolderHandler">Select All Files in this Folder</li>
 		</ul>
 	</div>
 </div>
@@ -84,8 +84,8 @@ const ResultsPage = {
 
 	data() {
 		return {
-			autoHideState     : false,
 			clusterSpanState  : "any",
+			autoCollapseState : "none",
 			textareaOn        : false,
 			showHighState     : false,
 			showHashState     : false,
@@ -136,7 +136,7 @@ const ResultsPage = {
 			this.copyToClipboard(ifile.file.name);
 		},
 
-		highlightHandler(direction, clusterID, fileIndex) {
+		highlightHandler(direction, clusterID, fileIndex) { // TODO 'direction' not needed
 			if (direction) {
 				if (!this.highlightedCoords.has(clusterID)) {
 					this.highlightedCoords.set(clusterID, new Set());
@@ -159,9 +159,53 @@ const ResultsPage = {
 			}
 		},
 
-		selectHandler(clusterID, direction) {
-			if (direction && this.autoHideState) {
-				this.collapsedClusters.add(clusterID);
+		selectHandler(cluster) {
+			const state = this.autoCollapseState;
+			if (state == "none") {
+				return;
+			}
+			let filter = null;
+			if (state == "any") {
+				filter = cluster => {
+					const highCount = this.highlightedCoords.get(cluster.ID)?.size ?? 0;
+					const total = this.$store.state.clusters[cluster.ID].ifiles.length;
+					return highCount > 0 && highCount < total;
+				}
+			} else if (state == "almost-all") {
+				filter = cluster => {
+					const highCount = this.highlightedCoords.get(cluster.ID)?.size ?? 0;
+					const total = this.$store.state.clusters[cluster.ID].ifiles.length;
+					return highCount == total-1;
+				}
+			}
+			if (filter(cluster)) {
+				this.collapsedClusters.add(cluster.ID);
+			}
+		},
+
+		autoCollapseClusters() {
+			const state = this.autoCollapseState;
+			if (state == "none") {
+				return;
+			}
+			let filter = null;
+			if (state == "any") {
+				filter = cluster => {
+					const highCount = this.highlightedCoords.get(cluster.ID)?.size ?? 0;
+					const total = this.$store.state.clusters[cluster.ID].ifiles.length;
+					return highCount > 0 && highCount < total;
+				}
+			} else if (state == "almost-all") {
+				filter = cluster => {
+					const highCount = this.highlightedCoords.get(cluster.ID)?.size ?? 0;
+					const total = this.$store.state.clusters[cluster.ID].ifiles.length;
+					return highCount == total-1;
+				}
+			}
+			for (const cluster of this.visibleClusters) {
+				if (filter(cluster)) {
+					this.collapsedClusters.add(cluster.ID);
+				}
 			}
 		},
 
@@ -217,7 +261,7 @@ const ResultsPage = {
 			this.rightClickIndex = -1;
 		},
 
-		highlightSameFolderHandler() {
+		selectSameFolderHandler() {
 			dirname = path => {
 				const parts = path.relpath.split("/");
 				parts.pop();
@@ -225,7 +269,7 @@ const ResultsPage = {
 			}
 			const ifile = this.$store.state.clusters[this.rightClickCluster].ifiles[this.rightClickIndex];
 			const targetDirname = dirname(ifile)
-			this.highlightVisible(f => {
+			this.selectVisible(f => {
 				return dirname(f) == targetDirname;
 			});
 			this.rightClickCluster = -1;
@@ -252,7 +296,7 @@ const ResultsPage = {
 			this.textareaOn = false;
 		},
 
-		highlightVisible(filter) {
+		selectVisible(filter) {
 			for (const cluster of this.visibleClusters) {
 				if (!this.highlightedCoords.has(cluster.ID)) {
 					this.highlightedCoords.set(cluster.ID, new Set());
@@ -268,9 +312,10 @@ const ResultsPage = {
 					}
 				}
 			}
+			this.autoCollapseClusters();
 		},
 
-		highlightNone() {
+		selectNone() {
 			this.highCount = 0;
 			this.highSize = 0;
 			this.highlightedCoords.clear();
@@ -283,6 +328,7 @@ const ResultsPage = {
 		},
 
 		collapseNone() {
+			this.autoCollapseState = "none";
 			this.collapsedClusters.clear();
 		},
 
@@ -314,7 +360,7 @@ const ResultsPage = {
 			}
 		},
 
-		matchesFilter(cluster) {
+		clusterIsVisible(cluster) {
 			if (this.clusterSpanState == "any") {
 				return true;
 			}
@@ -333,10 +379,13 @@ const ResultsPage = {
 			}
 			return false;
 		},
+
+		clusterIsCollapsed(cluster) {
+			return this.collapsedClusters.has(cluster.ID)
+		},
 	},
 
 	computed: {
-
 		visibleClusters() {
 			if (this.clusterSpanState == "any") {
 				return this.$store.state.clusters;
@@ -406,7 +455,7 @@ const ResultsPage = {
 			}
 			else if (this.isEnded) {
 				const clusterInfo = `${m}: Found ${c} cluster${c == 1 ? "" : "s"}  in ${t} file${t == 1 ? "" : "s"}.`;
-				const selectedInfo = ` Highlighted ${h} file${h == 1? "" : "s"} (${s}).`;
+				const selectedInfo = ` Selected ${h} file${h == 1? "" : "s"} (${s}).`;
 				return h ? clusterInfo + selectedInfo : clusterInfo;
 			} else {
 				return `${m}: Reading file ${n} of ${t}. Found ${c} cluster${c == 1 ? "" : "s"} so far.`;
@@ -419,9 +468,9 @@ const ResultsPage = {
 			}
 			if (this.$store.state.clusters.length == 0) {
 				if (this.$store.state.mustMatch && this.$store.state.progressTotal == 0) {
-					return "The selected folder does not contain any images of supported types. Images must be JPG, PNG, GIF, WEBP, or BMP files less than 40 MB in size.";
+					return "The chosen folder does not contain any images of supported types. Images must be JPG, PNG, GIF, WEBP, or BMP files less than 40 MB in size.";
 				} else if (!this.$store.state.mustMatch && this.$store.state.progressTotal <= 1) {
-					return "The selected folder does not contain at least 2 images of supported types. Images must be JPG, PNG, GIF, WEBP, or BMP files less than 40 MB in size.";
+					return "The chosen folder does not contain two or more images of supported types. Images must be JPG, PNG, GIF, WEBP, or BMP files less than 40 MB in size.";
 				} else {
 					return "No duplicates found.";
 				}
@@ -480,6 +529,14 @@ const ResultsPage = {
 	},
 
 	watch: {
+		autoCollapseState(newState) {
+			if (newState == "none") {
+				return;
+			}
+			this.collapsedClusters.clear();
+			this.autoCollapseClusters();
+		},
+
 		percentDone(pct) {
 			this.$refs.progressBar.style.width = "".concat(pct, "%");
 		},
