@@ -78,10 +78,12 @@ const Cluster = {
 					'div-img': true,
 					'highlighted': highlightedIndices.has(fileIndex),
 				}"
+				:title="ifile.file.name"
 				ref="imgs"
 				@mouseenter="mouseenterHandler($event, fileIndex)"
 				@mouseleave ="mouseleaveHandler($event, fileIndex)"
-				@mousedown="mousedownHandler($event, fileIndex)"
+				@mousedown.left="mousedownHandler($event, fileIndex)"
+				@contextmenu="contextmenuHandler($event, fileIndex)"
 			></Thumbnail>
 		</div>
 
@@ -93,11 +95,12 @@ const Cluster = {
 					'img-info': true,
 					'highlighted': highlightedIndices.has(fileIndex),
 				}"
+				:title="ifile.file.name"
 				ref="info"
 				@mouseenter="mouseenterHandler($event, fileIndex)"
 				@mouseleave ="mouseleaveHandler($event, fileIndex)"
-				@mousedown="mousedownHandler($event, fileIndex)"
-				:title="ifile.relpath"
+				@mousedown.left="mousedownHandler($event, fileIndex)"
+				@contextmenu="contextmenuHandler($event, fileIndex)"
 			>
 				<span ref="size" :class="['img-info-part', 'size', {'best-part': (parseInt(ifile.file.size/1024) == bestSize) }]">{{ parseInt(ifile.file.size/1024) }}</span>
 				<span ref="date" :class="['img-info-part', 'date', {'best-part': (formatDate(new Date(ifile.file.lastModified)) == bestDate) }]">{{ formatDate(new Date(ifile.file.lastModified)) }}</span>
@@ -176,6 +179,11 @@ const Cluster = {
 		toggleCluster() {
 			this.$emit("toggle", this.cluster.ID);
 		},
+
+		contextmenuHandler(event, fileIndex) {
+			event.preventDefault(); // prevent default context menu
+			this.$emit("rightClick", event.clientX, event.clientY, this.cluster.ID, fileIndex);
+		}
 	},
 
 	computed: {

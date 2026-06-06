@@ -26,7 +26,7 @@ const ResultsPage = {
 				<span v-show="!textareaOn"><span class="text-button noselect" @click="openList">list files</span></span>
 				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><input type="checkbox" id="hide-option" v-model="autoHideState"><label class="noselect" for="hide-option">Auto-Hide Selected Clusters</label></span>
 				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="noselect" for="folder-count">Cluster Span: </span><select name="folder-count" id="folder-count" v-model="clusterSpanState"><option value="any" default>Any</option><option value="single">Single Folder</option><option value="multiple">Multiple Folders</option></select></span>
-				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="text-button noselect" @click="highlightVisible">highlight all</span></span>
+				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="text-button noselect" @click="highlightVisible(null)">highlight all</span></span>
 				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="text-button noselect" @click="highlightNone">highlight none</span></span>
 				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="text-button noselect" @click="collapseVisible">collapse all</span></span>
 				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="text-button noselect" @click="collapseNone">expand all</span></span>
@@ -58,12 +58,27 @@ const ResultsPage = {
 			@highlight="highlightHandler"
 			@select="selectHandler"
 			@toggle="toggleHandler"
+			@rightClick="rightClickHandler"
 		></Cluster>
 	</div>
 
 	<div ref="message" id="message" v-show="messageText">{{ messageText }}</div>
 
 	<ScrollToTop class="button noselect"></ScrollToTop>
+
+	<div
+		id="file-context-menu"
+		class="context-menu"
+		ref="fileContextMenu"
+		v-show="rightClickCluster != -1"
+		tabindex="-1"
+		@focusout="focusoutHandler"
+	>
+		<ul>
+			<li @click="copyFilenameHandler">Copy File Name</li>
+			<li @click="highlightSameFolderHandler">Highlight All Files in this Folder</li>
+		</ul>
+	</div>
 </div>
 `,
 
@@ -80,6 +95,8 @@ const ResultsPage = {
 			messageText       : "",
 			highlightedCoords : new Map(),
 			collapsedClusters : new Set(), // might be more performant to have a Map: index -> collapsedState (bool)
+			rightClickCluster : -1,
+			rightClickIndex   : -1,
 		}
 	},
 
@@ -156,9 +173,74 @@ const ResultsPage = {
 			}
 		},
 
+		rightClickHandler(x, y, clusterID, fileIndex) {
+			this.rightClickCluster = clusterID;
+			this.rightClickIndex = fileIndex;
+
+			this.$nextTick(() => {
+				const fileContextMenu = this.$refs.fileContextMenu;
+				const menuWidth = fileContextMenu.offsetWidth;
+				const menuHeight = fileContextMenu.offsetHeight;
+				const windowWidth = window.innerWidth;
+				const windowHeight = window.innerHeight;
+
+				if ((x + menuWidth) > windowWidth) {
+					fileContextMenu.style.left = `${windowWidth - menuWidth}px`;
+				} else {
+					fileContextMenu.style.left = `${x}px`;
+				}
+
+				if ((y + menuHeight) > windowHeight) {
+					fileContextMenu.style.top = `${windowHeight - menuHeight}px`;
+				} else {
+					fileContextMenu.style.top = `${y}px`;
+				}
+
+				fileContextMenu.focus();
+			});
+		},
+
+		focusoutHandler(event) {
+			const fileContextMenu = this.$refs.fileContextMenu;
+			if (!fileContextMenu.contains(event.relatedTarget)) {
+				this.rightClickCluster = -1;
+				this.rightClickIndex = -1;
+			}
+			this.rightClickCluster = -1;
+			this.rightClickIndex = -1;
+		},
+
+		copyFilenameHandler() {
+			const ifile = this.$store.state.clusters[this.rightClickCluster].ifiles[this.rightClickIndex];
+			this.copyToClipboard(ifile.file.name);
+			this.rightClickCluster = -1;
+			this.rightClickIndex = -1;
+		},
+
+		highlightSameFolderHandler() {
+			dirname = path => {
+				const parts = path.relpath.split("/");
+				parts.pop();
+				return parts.join("/");
+			}
+			const ifile = this.$store.state.clusters[this.rightClickCluster].ifiles[this.rightClickIndex];
+			const targetDirname = dirname(ifile)
+			this.highlightVisible(f => {
+				return dirname(f) == targetDirname;
+			});
+			this.rightClickCluster = -1;
+			this.rightClickIndex = -1;
+		},
+
 		keyDownHandler(event) {
 			if (event.key === "Escape") {
-				this.textareaOn = false;
+				if (this.rightClickCluster != -1) {
+					fileContextMenu = this.$refs.fileContextMenu;
+					this.rightClickCluster = -1;
+					this.rightClickIndex = -1;
+				} else {
+					this.textareaOn = false;
+				}
 			}
 		},
 
@@ -170,7 +252,7 @@ const ResultsPage = {
 			this.textareaOn = false;
 		},
 
-		highlightVisible() {
+		highlightVisible(filter) {
 			for (const cluster of this.visibleClusters) {
 				if (!this.highlightedCoords.has(cluster.ID)) {
 					this.highlightedCoords.set(cluster.ID, new Set());
@@ -178,9 +260,11 @@ const ResultsPage = {
 				const highlightedFileIndices = this.highlightedCoords.get(cluster.ID);
 				for (const [imageIndex, ifile] of cluster.ifiles.entries()) {
 					if (!highlightedFileIndices.has(imageIndex)) {
-						this.highCount += 1;
-						this.highSize += ifile.file.size;
-						highlightedFileIndices.add(imageIndex);
+						if (!filter || filter(ifile)) {
+							this.highCount += 1;
+							this.highSize += ifile.file.size;
+							highlightedFileIndices.add(imageIndex);
+						}
 					}
 				}
 			}
