@@ -68,7 +68,7 @@ const Cluster = {
 	>
 		{{ clusterIndex + 1 }}
 	</div>
-	<div ref="clusterContent" class="cluster-content" @mouseup="mouseUpHandler">
+	<div ref="clusterContent" class="cluster-content" @mouseup.left="mouseUpHandler">
 		<div class="cluster-imgs">
 			<Thumbnail
 				v-for="(ifile, fileIndex) in cluster.ifiles"
