@@ -26,6 +26,7 @@ const ResultsPage = {
 				<span v-show="!textareaOn"><span class="text-button noselect" @click="openList">list files</span></span>
 				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="noselect">Cluster Span: </span><select name="folder-count" id="folder-count" v-model="clusterSpanState"><option value="any" default>Any</option><option value="single">Single Folder</option><option value="multiple">Multiple Folders</option></select></span>
 				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="noselect">Auto-Collapse: </span><select name="auto-collapse" id="auto-collapse" v-model="autoCollapseState"><option value="none" default>-</option><option value="any">Any Selected</option><option value="almost-all">All But 1 Selected</option></select></span>
+				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="text-button noselect" @click="selectObvious">select obvious</span></span>
 				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="text-button noselect" @click="selectVisible(null)">select all</span></span>
 				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="text-button noselect" @click="selectNone">select none</span></span>
 				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="text-button noselect" @click="collapseVisible">collapse all</span></span>
@@ -296,6 +297,28 @@ const ResultsPage = {
 			this.textareaOn = false;
 		},
 
+		selectObvious() {
+			// selects files that match the following criteria:
+			// 1. the filename ends with " (\d)", " (copy)", or "_\d"
+			// 2. there is another file in the same folder that exists without this suffixes
+			// 3. the other file is the same size
+			// 4. the hashes match exactly
+			const regex = /(\s\(copy(?:\s\d+)?\)|\s\(\d+\)|_\d+)(\.[^.]+)?$/;
+			filter = (f, cluster) => {
+				const strippedName = f.file.name.replace(regex, "$2");
+				if (f.file.name == strippedName) {
+					return false;
+				}
+				for (const f2 of cluster.ifiles) {
+					if (f2.file.name == strippedName && f2.file.size == f.file.size && f2.hash.equals(f.hash)) {
+						return true;
+					}
+				}
+				return false;
+			}
+			this.selectVisible(filter);
+		},
+
 		selectVisible(filter) {
 			for (const cluster of this.visibleClusters) {
 				if (!this.highlightedCoords.has(cluster.ID)) {
@@ -304,7 +327,7 @@ const ResultsPage = {
 				const highlightedFileIndices = this.highlightedCoords.get(cluster.ID);
 				for (const [imageIndex, ifile] of cluster.ifiles.entries()) {
 					if (!highlightedFileIndices.has(imageIndex)) {
-						if (!filter || filter(ifile)) {
+						if (!filter || (filter.length==1 && filter(ifile)) || (filter.length==2 && filter(ifile, cluster))) {
 							this.highCount += 1;
 							this.highSize += ifile.file.size;
 							highlightedFileIndices.add(imageIndex);

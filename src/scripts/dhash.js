@@ -69,4 +69,8 @@ class DHash {
 	isSimilar(other, threshold = 5) {
 		return this.compare(other) <= threshold;
 	}
+	
+	equals(other) {
+		return this.compare(other) == 0;
+	}
 }

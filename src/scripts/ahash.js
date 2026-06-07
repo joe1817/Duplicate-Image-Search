@@ -112,4 +112,8 @@ class AHash {
 	isSimilar(other, dist = 400) {
 		return this.compare(other) <= dist * this.data.length;
 	}
+	
+	equals(other) {
+		return this.compare(other) == 0;
+	}
 }
