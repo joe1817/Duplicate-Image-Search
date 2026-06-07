@@ -1,7 +1,11 @@
 const ResultsPage = {
 
 	template: `
-<div id="results-page" @keydown="keyDownHandler" tabindex="-1"> <!-- tabindex needed to receive keydown events -->
+<div
+	id="results-page"
+	tabindex="-1"
+	@keydown="keyDownHandler"
+> <!-- tabindex needed to receive keydown events -->
 	<div class="header">
 
 		<div class="header-title">
@@ -26,11 +30,6 @@ const ResultsPage = {
 				<span v-show="!textareaOn"><span class="text-button noselect" @click="openList">list files</span></span>
 				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="noselect">Cluster Span: </span><select name="folder-count" id="folder-count" v-model="clusterSpanState"><option value="any" default>Any</option><option value="single">Single Folder</option><option value="multiple">Multiple Folders</option></select></span>
 				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="noselect">Auto-Collapse: </span><select name="auto-collapse" id="auto-collapse" v-model="autoCollapseState"><option value="none" default>-</option><option value="any">Any Selected</option><option value="almost-all">All But 1 Selected</option></select></span>
-				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="text-button noselect" @click="selectObvious">select obvious</span></span>
-				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="text-button noselect" @click="selectVisible(null)">select all</span></span>
-				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="text-button noselect" @click="selectNone">select none</span></span>
-				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="text-button noselect" @click="collapseVisible">collapse all</span></span>
-				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="text-button noselect" @click="collapseNone">expand all</span></span>
 
 
 				<span v-show="textareaOn"><span class="text-button noselect" @click="closeList">[×]</span></span>
@@ -45,7 +44,12 @@ const ResultsPage = {
 		</div>
 	</div>
 
-	<div ref="allClusters" id="clusters" class="clusters noselect">
+	<div
+		id="clusters"
+		class="clusters noselect"
+		ref="allClusters"
+		@contextmenu="contextmenuHandler($event)"
+	>
 		<Cluster
 			v-for="(cluster, index) in $store.state.clusters"
 			v-show="clusterIsVisible(cluster)"
@@ -55,11 +59,11 @@ const ResultsPage = {
 			:clusterIndex="index"
 			:highlightedIndices="highlightedCoords.get(index) || new Set()"
 			:collapsed="clusterIsCollapsed(cluster)"
-			@ctrlClick="ctrlClickHandler"
 			@highlight="highlightHandler"
 			@select="selectHandler"
 			@toggle="toggleHandler"
-			@rightClick="rightClickHandler"
+			@rightClick="thumbnailRightClickHandler"
+			@ctrlClick="thumbnailCtrlClickHandler"
 		></Cluster>
 	</div>
 
@@ -67,37 +71,53 @@ const ResultsPage = {
 
 	<ScrollToTop class="button noselect"></ScrollToTop>
 
-	<div
-		id="file-context-menu"
-		class="context-menu"
-		ref="fileContextMenu"
-		v-show="rightClickCluster != -1"
-		tabindex="-1"
-		@focusout="focusoutHandler"
-	>
-		<ul>
-			<li @click="copyFilenameHandler">Copy File Name</li>
-			<li @click="selectSameFolderHandler">Select All Files in this Folder</li>
-		</ul>
-	</div>
+	<Teleport to="body">
+		<div
+			id="context-menu"
+			class="context-menu"
+			ref="contextMenu"
+			v-show="showContextMenu"
+			tabindex="-1"
+			@focusout="contextMenuFocusoutHandler"
+		>
+			<template v-if="contextMenuClusterArg === -1">
+				<ul>
+					<li @click="selectObvious">Select Obvious</li>
+					<li @click="selectVisible(null)">Select All</li>
+					<li @click="selectNone">Select None</li>
+					<li class="separator noselect" />
+					<li @click="collapseVisible">Collapse All</li>
+					<li @click="collapseNone">Expand All</li>
+				</ul>
+			</template>
+			<template v-else>
+				<ul>
+					<li @click="copyFilenameHandler">Copy File Name</li>
+					<li @click="selectSameFolderHandler">Select All Files in this Folder</li>
+				</ul>
+			</template>
+		</div>
+	</Teleport>
 </div>
 `,
 
 	data() {
 		return {
-			clusterSpanState  : "any",
-			autoCollapseState : "none",
-			textareaOn        : false,
-			showHighState     : false,
-			showHashState     : false,
-			scriptState       : false,
-			highCount         : 0,
-			highSize          : 0,
-			messageText       : "",
-			highlightedCoords : new Map(),
-			collapsedClusters : new Set(), // might be more performant to have a Map: index -> collapsedState (bool)
-			rightClickCluster : -1,
-			rightClickIndex   : -1,
+			clusterSpanState      : "any",
+			autoCollapseState     : "none",
+			textareaOn            : false,
+			drawerOpen            : false,
+			showHighState         : false,
+			showHashState         : false,
+			scriptState           : false,
+			highCount             : 0,
+			highSize              : 0,
+			messageText           : "",
+			highlightedCoords     : new Map(),
+			collapsedClusters     : new Set(), // might be more performant to have a Map: index -> collapsedState (bool)
+			showContextMenu       : false,
+			contextMenuClusterArg : -1,
+			contextMenuFileArg    : -1,
 		}
 	},
 
@@ -133,7 +153,7 @@ const ResultsPage = {
 			this.isPaused = !this.isPaused;
 		},
 
-		ctrlClickHandler(ifile) {
+		thumbnailCtrlClickHandler(ifile) {
 			this.copyToClipboard(ifile.file.name);
 		},
 
@@ -218,48 +238,73 @@ const ResultsPage = {
 			}
 		},
 
-		rightClickHandler(x, y, clusterID, fileIndex) {
-			this.rightClickCluster = clusterID;
-			this.rightClickIndex = fileIndex;
+		thumbnailRightClickHandler(x, y, clusterID, fileIndex) {
+			this.contextMenuClusterArg = clusterID;
+			this.contextMenuFileArg = fileIndex;
+			this.showContextMenu = true;
 
 			this.$nextTick(() => {
-				const fileContextMenu = this.$refs.fileContextMenu;
-				const menuWidth = fileContextMenu.offsetWidth;
-				const menuHeight = fileContextMenu.offsetHeight;
+				const contextMenu = this.$refs.contextMenu;
+				const menuWidth = contextMenu.offsetWidth;
+				const menuHeight = contextMenu.offsetHeight;
 				const windowWidth = window.innerWidth;
 				const windowHeight = window.innerHeight;
 
 				if ((x + menuWidth) > windowWidth) {
-					fileContextMenu.style.left = `${windowWidth - menuWidth}px`;
+					contextMenu.style.left = `${windowWidth - menuWidth}px`;
 				} else {
-					fileContextMenu.style.left = `${x}px`;
+					contextMenu.style.left = `${x}px`;
 				}
 
 				if ((y + menuHeight) > windowHeight) {
-					fileContextMenu.style.top = `${windowHeight - menuHeight}px`;
+					contextMenu.style.top = `${windowHeight - menuHeight}px`;
 				} else {
-					fileContextMenu.style.top = `${y}px`;
+					contextMenu.style.top = `${y}px`;
 				}
 
-				fileContextMenu.focus();
+				contextMenu.focus();
 			});
 		},
 
-		focusoutHandler(event) {
-			const fileContextMenu = this.$refs.fileContextMenu;
-			if (!fileContextMenu.contains(event.relatedTarget)) {
-				this.rightClickCluster = -1;
-				this.rightClickIndex = -1;
-			}
-			this.rightClickCluster = -1;
-			this.rightClickIndex = -1;
+		contextmenuHandler(event) {
+			event.preventDefault();
+			event.stopPropagation();
+			this.showContextMenu = true;
+			const [x, y] = [event.clientX, event.clientY];
+
+			this.$nextTick(() => {
+				const contextMenu = this.$refs.contextMenu;
+				const menuWidth = contextMenu.offsetWidth;
+				const menuHeight = contextMenu.offsetHeight;
+				const windowWidth = window.innerWidth;
+				const windowHeight = window.innerHeight;
+
+				if ((x + menuWidth) > windowWidth) {
+					contextMenu.style.left = `${windowWidth - menuWidth}px`;
+				} else {
+					contextMenu.style.left = `${x}px`;
+				}
+
+				if ((y + menuHeight) > windowHeight) {
+					contextMenu.style.top = `${windowHeight - menuHeight}px`;
+				} else {
+					contextMenu.style.top = `${y}px`;
+				}
+
+				contextMenu.focus();
+			});
+		},
+
+		contextMenuFocusoutHandler(event) {
+			this.contextMenuClusterArg = -1;
+			this.contextMenuFileArg = -1;
+			this.showContextMenu = false;
 		},
 
 		copyFilenameHandler() {
-			const ifile = this.$store.state.clusters[this.rightClickCluster].ifiles[this.rightClickIndex];
+			const ifile = this.$store.state.clusters[this.contextMenuClusterArg].ifiles[this.contextMenuFileArg];
 			this.copyToClipboard(ifile.file.name);
-			this.rightClickCluster = -1;
-			this.rightClickIndex = -1;
+			this.$refs.contextMenu.blur();
 		},
 
 		selectSameFolderHandler() {
@@ -268,21 +313,18 @@ const ResultsPage = {
 				parts.pop();
 				return parts.join("/");
 			}
-			const ifile = this.$store.state.clusters[this.rightClickCluster].ifiles[this.rightClickIndex];
+			const ifile = this.$store.state.clusters[this.contextMenuClusterArg].ifiles[this.contextMenuFileArg];
 			const targetDirname = dirname(ifile)
 			this.selectVisible(f => {
 				return dirname(f) == targetDirname;
 			});
-			this.rightClickCluster = -1;
-			this.rightClickIndex = -1;
+			this.$refs.contextMenu.blur();
 		},
 
 		keyDownHandler(event) {
 			if (event.key === "Escape") {
-				if (this.rightClickCluster != -1) {
-					fileContextMenu = this.$refs.fileContextMenu;
-					this.rightClickCluster = -1;
-					this.rightClickIndex = -1;
+				if (this.contextMenuClusterArg != -1) {
+					this.$refs.contextMenu.blur();
 				} else {
 					this.textareaOn = false;
 				}
@@ -317,6 +359,7 @@ const ResultsPage = {
 				return false;
 			}
 			this.selectVisible(filter);
+			this.$refs.contextMenu.blur();
 		},
 
 		selectVisible(filter) {
@@ -336,23 +379,28 @@ const ResultsPage = {
 				}
 			}
 			this.autoCollapseClusters();
+			this.$refs.contextMenu.blur();
 		},
 
 		selectNone() {
 			this.highCount = 0;
 			this.highSize = 0;
 			this.highlightedCoords.clear();
+			//this.collapseNone();
+			this.$refs.contextMenu.blur();
 		},
 
 		collapseVisible() {
 			for (const cluster of this.visibleClusters) {
 				this.collapsedClusters.add(cluster.ID);
 			}
+			this.$refs.contextMenu.blur();
 		},
 
 		collapseNone() {
 			this.autoCollapseState = "none";
 			this.collapsedClusters.clear();
+			this.$refs.contextMenu.blur();
 		},
 
 		copyListToClipboard() {

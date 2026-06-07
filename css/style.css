@@ -459,7 +459,7 @@ textarea {
 }
 
 #clusters {
-	margin-top: 180px;
+	padding-top: 180px;
 	display: flex;
 	flex-direction: row;
 	row-gap: 30px;
@@ -631,7 +631,6 @@ u.filenameDiff {
 	box-shadow: 2px 5px 10px rgba(0,0,0,0.15);
 	border-radius: 4px;
 	z-index: 1000;
-	width: 200px;
 }
 
 .context-menu ul {
@@ -649,14 +648,15 @@ u.filenameDiff {
 	color: #DDD;
 }
 
-.context-menu ul li:hover {
+.context-menu ul li:not(.separator):hover {
 	background-color: #F44;
 	color: white;
 }
 
 .context-menu .separator {
 	height: 1px;
-	background: #EEE;
-	margin: 4px 0;
+	background: #777;
+	margin: 4px 17px;
 	padding: 0;
+	cursor: auto;
 }
