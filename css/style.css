@@ -422,24 +422,10 @@ a {
 	cursor: pointer;
 }
 
-textarea {
-	width: 100%;
-	height: 60px;
-	padding-bottom: 8px;
-}
-
-.textarea {
-	margin-bottom: 14px;
-	font-size: 0.8em;
-	color: #EEE;
-	background-color: #444;
-	border-color: #777;
-}
-
-.textareaon {
-	display: block;
-	width: 100%;
-	height: 160px;
+.text-button.disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+	pointer-events: none; /* Prevent click events */
 }
 
 #message {
@@ -660,4 +646,120 @@ u.filenameDiff {
 	margin: 4px 17px;
 	padding: 0;
 	cursor: auto;
+}
+
+/* Results Drawer */
+
+.drawer {
+	position: fixed;
+	top: 0;
+	right: 0;
+	width: 400px;
+	height: 100vh;
+	max-width: 80%;
+	padding: 0 5px;
+	background-color: #282828;
+	box-shadow: -5px 0 15px rgba(0,0,0,0.1);
+	z-index: 2000;
+
+	transform: translateX(100%);
+	transition: transform 0.3s ease-out;
+
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+
+	opacity: 30%;
+}
+
+.drawer:focus-within {
+	opacity: 100%;
+}
+
+.drawer.open {
+	transform: translateX(0);
+}
+
+.drawer header {
+	display: flex;
+	flex-direction: row;
+	justify-content: space-between;
+	font-size: 1.5em;
+
+	height: 54px;
+	background-color: #444;
+	font-size: 28px;
+	line-height: 54px;
+	padding: 0 12px;
+}
+
+.drawer-options {
+	padding: 0 30px;
+}
+
+.drawer-actions {
+	margin-top: 10px;
+	text-align: center;
+}
+
+.textarea {
+	flex: 1;
+	margin-bottom: 10px;
+	width: 100%;
+	max-width: 100%;
+	background-color: #444;
+	border: 1px solid #777;
+	padding: 15px 15px 15px 35px;
+	box-sizing: border-box;
+	font-size: 0.8em;
+	overflow-y: auto;
+	overscroll-behavior-y: contain;
+
+	background-image: linear-gradient(
+		to right,
+		transparent 0px,
+		#333 0px,
+		#333 30px,
+		transparent 30px
+	);
+	background-repeat: repeat-y;
+}
+
+.textarea ul {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+}
+
+.textarea li {
+	color: #EEE;
+	position: relative;
+	margin-bottom: 8px;
+	font-family: monospace;
+	line-break: anywhere;
+}
+
+.textarea li::selection {
+	color: white;
+	background-color: #F44;
+}
+
+/* Inject the unselectable dot */
+.textarea li::before {
+	content: "—";
+	position: absolute;
+	left: -23px;
+	color: #555;
+	font-weight: bold;
+	user-select: none;
+	pointer-events: none;
+}
+
+.no-scrollbar {
+	&::-webkit-scrollbar { /* Chrome, Safari, and Edge */
+		display: none;
+	}
+	scrollbar-width: none; /* Firefox */
+	-ms-overflow-style: none; /* Internet Explorer */
+	overflow-y: auto;
 }

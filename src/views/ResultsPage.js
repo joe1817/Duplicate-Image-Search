@@ -27,20 +27,31 @@ const ResultsPage = {
 			</div>
 
 			<div>
-				<span v-show="!textareaOn"><span class="text-button noselect" @click="openList">list files</span></span>
-				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="noselect">Cluster Span: </span><select name="folder-count" id="folder-count" v-model="clusterSpanState"><option value="any" default>Any</option><option value="single">Single Folder</option><option value="multiple">Multiple Folders</option></select></span>
-				<span v-show="!textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="noselect">Auto-Collapse: </span><select name="auto-collapse" id="auto-collapse" v-model="autoCollapseState"><option value="none" default>-</option><option value="any">Any Selected</option><option value="almost-all">All But 1 Selected</option></select></span>
+				<span
+					:class="{
+						'text-button': true,
+						noselect: true,
+						disabled: drawerOpen
+					}"
+					@click="openDrawer"
+				>List Files</span>
 
+				<span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span>
+				<span class="noselect">Cluster Span: </span>
+				<select name="folder-count" id="folder-count" v-model="clusterSpanState">
+					<option value="any" default>Any</option>
+					<option value="single">Single Folder</option>
+					<option value="multiple">Multiple Folders</option>
+				</select>
 
-				<span v-show="textareaOn"><span class="text-button noselect" @click="closeList">[×]</span></span>
-				<span v-show="textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="text-button noselect" @click="copyListToClipboard">copy list</span></span>
-				<span v-show="textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><span class="text-button noselect" @click="downloadList">{{scriptState ? "download script" : "download list"}}</span></span>
-				<span v-show="textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><input type="checkbox" id="show-high-option" v-model="showHighState"><label class="noselect" for="show-high-option">Show Highlighted Only</label></span>
-				<span v-show="textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><input type="checkbox" id="show-hash-option" v-model="showHashState"><label class="noselect" for="show-hash-option">Show Hashes</label></span>
-				<span v-show="textareaOn"><span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span><input type="checkbox" id="script-option" v-model="scriptState"><label class="noselect" for="script-option">Deletion Script</label></span>
+				<span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span>
+				<span class="noselect">Auto-Collapse: </span>
+				<select name="auto-collapse" id="auto-collapse" v-model="autoCollapseState">
+					<option value="none" default>-</option>
+					<option value="any">Any Selected</option>
+					<option value="almost-all">All But 1 Selected</option>
+				</select>
 			</div>
-
-			<textarea class="textarea" ref="textarea" v-model="textareaText" v-show="textareaOn" spellcheck="false" readonly></textarea>
 		</div>
 	</div>
 
@@ -65,6 +76,57 @@ const ResultsPage = {
 			@rightClick="thumbnailRightClickHandler"
 			@ctrlClick="thumbnailCtrlClickHandler"
 		></Cluster>
+	</div>
+
+	<div
+		:class="{
+			drawer: true,
+			open: drawerOpen,
+		}"
+		tabindex="-1"
+		ref="drawer"
+	>
+		<header>
+			<span class="header-spacer"></span>
+			<span class="noselect">Results</span>
+			<span class="text-button noselect" title="Close" @click="closeDrawer">✕</span>
+		</header>
+
+		<div class="drawer-options">
+			<div class="drawer-settings">
+				<div>
+					<input type="checkbox" id="show-high-option" v-model="showHighState"><label class="noselect" for="show-high-option">Show Highlighted Only</label>
+				</div>
+
+				<div>
+					<input type="checkbox" id="show-hash-option" v-model="showHashState"><label class="noselect" for="show-hash-option">Show Hashes</label>
+				</div>
+
+				<div>
+					<input type="checkbox" id="script-option" v-model="scriptState"><label class="noselect" for="script-option">Deletion Script</label>
+				</div>
+			</div>
+
+			<div class="drawer-actions">
+				<span class="text-button noselect" @click="copyListToClipboard">Copy List</span>
+				<span class="noselect">&nbsp;&nbsp;—&nbsp;&nbsp;</span>
+				<span class="text-button noselect" @click="downloadList">{{scriptState ? "Download Script" : "Download List"}}</span>
+			</div>
+		</div>
+
+		<div class="textarea no-scrollbar" ref="textarea">
+			<ul id="output-list">
+				<li v-for="(item, index) in textareaText" :key="index">
+					<template v-if="item === ''">
+						<br />
+					</template>
+					<template v-else>
+						{{ item }}
+					</template>
+				</li>
+			</ul>
+		</div>
+
 	</div>
 
 	<div ref="message" id="message" v-show="messageText">{{ messageText }}</div>
@@ -105,7 +167,6 @@ const ResultsPage = {
 		return {
 			clusterSpanState      : "any",
 			autoCollapseState     : "none",
-			textareaOn            : false,
 			drawerOpen            : false,
 			showHighState         : false,
 			showHashState         : false,
@@ -166,7 +227,7 @@ const ResultsPage = {
 
 				this.highCount += 1;
 				this.highSize += this.$store.state.clusters[clusterID].ifiles[fileIndex].file.size;
-				if (!this.textareaOn && this.highCount == 1) {
+				if (!this.drawerOpen && this.highCount == 1) {
 					this.showHighState = true;
 				}
 			} else {
@@ -174,7 +235,7 @@ const ResultsPage = {
 
 				this.highCount -= 1;
 				this.highSize -= this.$store.state.clusters[clusterID].ifiles[fileIndex].file.size;
-				if (!this.textareaOn && !this.highCount) {
+				if (!this.drawerOpen && !this.highCount) {
 					this.showHighState = false;
 				}
 			}
@@ -326,17 +387,18 @@ const ResultsPage = {
 				if (this.contextMenuClusterArg != -1) {
 					this.$refs.contextMenu.blur();
 				} else {
-					this.textareaOn = false;
+					this.drawerOpen = false;
 				}
 			}
 		},
 
-		openList() {
-			this.textareaOn = true;
+		openDrawer() {
+			this.drawerOpen = true;
+			this.$refs.drawer.focus();
 		},
 
-		closeList() {
-			this.textareaOn = false;
+		closeDrawer() {
+			this.drawerOpen = false;
 		},
 
 		selectObvious() {
@@ -404,13 +466,13 @@ const ResultsPage = {
 		},
 
 		copyListToClipboard() {
-			const data = this.$refs.textarea.value;
+			const data = this.$refs.textarea.innerText;
 			this.copyToClipboard(data);
 		},
 
 		downloadList() {
 			const onWindows = navigator.userAgent.toLowerCase().includes("win");
-			const data = this.$refs.textarea.value;
+			const data = this.$refs.textarea.innerText;
 			const ext = this.scriptState ? (onWindows ? "bat" : "sh") : "txt";
 			const filename = `selected-duplicates-${this.formatDate(new Date())}.${ext}`;
 			const type = "text/plain";
@@ -553,9 +615,10 @@ const ResultsPage = {
 		textareaText: {
 			get() {
 				const onWindows = navigator.userAgent.toLowerCase().includes("win");
-				let text = "";
-				if (this.scriptState) {
-					text = text.concat(onWindows ? "" : "#!/bin/bash\n\n");
+				const text = [];
+				if (this.scriptState && !onWindows) {
+					text.push("#!/bin/bash");
+					text.push("");
 				}
 				this.$store.state.clusters.forEach(cluster => {
 					if (!this.showHighState || this.highlightedCoords.has(cluster.ID)) {
@@ -577,20 +640,23 @@ const ResultsPage = {
 									const hash = parseInt(ifile.hash.bitstring, 2).toString(16).padStart(16, "0");
 									path = hash + " " + path;
 								}
-								text = text.concat(path, "\n");
+								text.push(path);
 							}
 						});
 						if (addedSome) {
-							text = text.concat("\n");
+							text.push("");
 						}
 					}
 				});
 				if (this.scriptState) {
 					if (onWindows) {
-						text = text.concat("pause");
+						text.push("pause");
 					}
 				}
-				return text.trimEnd();
+				if (text.at(-1) == "") {
+					text.pop();
+				}
+				return text;
 			},
 			set(val) {
 				// readonly
