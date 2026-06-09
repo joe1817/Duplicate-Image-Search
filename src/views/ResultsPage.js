@@ -82,9 +82,11 @@ const ResultsPage = {
 		:class="{
 			drawer: true,
 			open: drawerOpen,
+			noselect: !drawerOpen,
 		}"
 		tabindex="-1"
 		ref="drawer"
+		@keydown.ctrl.a.prevent="drawerSelectAllHandler"
 	>
 		<header>
 			<span class="header-spacer"></span>
@@ -390,6 +392,15 @@ const ResultsPage = {
 					this.drawerOpen = false;
 				}
 			}
+		},
+
+		drawerSelectAllHandler(event) {
+			const targetDiv = this.$refs.textarea;
+			const range = document.createRange();
+			range.selectNodeContents(targetDiv);
+			const selection = window.getSelection();
+			selection.removeAllRanges();
+			selection.addRange(range);
 		},
 
 		openDrawer() {
