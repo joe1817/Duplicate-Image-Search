@@ -351,6 +351,8 @@ a {
 #results-page {
 	min-height: 100vh;
 	box-sizing: border-box;
+	display: flex;
+	flex-direction: column;
 }
 
 .header {
@@ -443,6 +445,10 @@ a {
 	left: 50%;
 	transform: translate(-50%, 0%);
 	z-index: 1000;
+}
+
+#clustersPane {
+	flex: 1;
 }
 
 #clusters {

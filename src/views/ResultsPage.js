@@ -56,26 +56,30 @@ const ResultsPage = {
 	</div>
 
 	<div
-		id="clusters"
-		class="clusters noselect"
-		ref="allClusters"
+		id="clustersPane"
 		@contextmenu="contextmenuHandler($event)"
 	>
-		<Cluster
-			v-for="(cluster, index) in $store.state.clusters"
-			v-show="clusterIsVisible(cluster)"
-			:key="cluster.ID"
-			ref="cluster"
-			:cluster="cluster"
-			:clusterIndex="index"
-			:highlightedIndices="highlightedCoords.get(index) || new Set()"
-			:collapsed="clusterIsCollapsed(cluster)"
-			@highlight="highlightHandler"
-			@select="selectHandler"
-			@toggle="toggleHandler"
-			@rightClick="thumbnailRightClickHandler"
-			@ctrlClick="thumbnailCtrlClickHandler"
-		></Cluster>
+		<div
+			id="clusters"
+			class="clusters noselect"
+			ref="allClusters"
+		>
+			<Cluster
+				v-for="(cluster, index) in $store.state.clusters"
+				v-show="clusterIsVisible(cluster)"
+				:key="cluster.ID"
+				ref="cluster"
+				:cluster="cluster"
+				:clusterIndex="index"
+				:highlightedIndices="highlightedCoords.get(index) || new Set()"
+				:collapsed="clusterIsCollapsed(cluster)"
+				@highlight="highlightHandler"
+				@select="selectHandler"
+				@toggle="toggleHandler"
+				@rightClick="thumbnailRightClickHandler"
+				@ctrlClick="thumbnailCtrlClickHandler"
+			></Cluster>
+		</div>
 	</div>
 
 	<div
