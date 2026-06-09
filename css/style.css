@@ -349,11 +349,12 @@ a {
 /* Second "page" */
 
 #results-page {
-	padding-bottom: 60px;
+	min-height: 100vh;
+	box-sizing: border-box;
 }
 
 .header {
-	position: fixed;
+	position: sticky;
 	top: 0;
 	width: 100%;
 	min-width: 700px;
@@ -459,7 +460,7 @@ textarea {
 }
 
 #clusters {
-	padding-top: 180px;
+	padding: 50px 0;
 	display: flex;
 	flex-direction: row;
 	row-gap: 30px;
