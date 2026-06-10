@@ -183,7 +183,7 @@ const Cluster = {
 		contextmenuHandler(event, fileIndex) {
 			event.preventDefault(); // prevent default context menu
 			event.stopPropagation(); // don't let general context menu show up
-			this.$emit("rightClick", event.clientX, event.clientY, this.cluster.ID, fileIndex);
+			this.$emit("rightClick", event, this.cluster.ID, fileIndex);
 		}
 	},
 

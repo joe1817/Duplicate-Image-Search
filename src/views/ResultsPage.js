@@ -133,33 +133,31 @@ const ResultsPage = {
 
 	<ScrollToTop class="button noselect"></ScrollToTop>
 
-	<Teleport to="body">
-		<div
-			id="context-menu"
-			class="context-menu"
-			ref="contextMenu"
-			v-show="showContextMenu"
-			tabindex="-1"
-			@focusout="contextMenuFocusoutHandler"
-		>
-			<template v-if="contextMenuClusterArg === -1">
-				<ul>
-					<li @click="selectObvious">Select Obvious</li>
-					<li @click="selectVisible(null)">Select All</li>
-					<li @click="selectNone">Select None</li>
-					<li class="separator noselect" />
-					<li @click="collapseVisible">Collapse All</li>
-					<li @click="collapseNone">Expand All</li>
-				</ul>
-			</template>
-			<template v-else>
-				<ul>
-					<li @click="copyFilenameHandler">Copy File Name</li>
-					<li @click="selectSameFolderHandler">Select All Files in this Folder</li>
-				</ul>
-			</template>
-		</div>
-	</Teleport>
+	<div
+		id="context-menu"
+		class="context-menu"
+		ref="contextMenu"
+		v-show="showContextMenu"
+		tabindex="-1"
+		@focusout="showContextMenu = false"
+	>
+		<template v-if="contextMenuClusterArg === -1">
+			<ul>
+				<li @click="selectObvious">Select Obvious</li>
+				<li @click="selectVisible(null)">Select All</li>
+				<li @click="selectNone">Select None</li>
+				<li class="separator noselect" />
+				<li @click="collapseVisible">Collapse All</li>
+				<li @click="collapseNone">Expand All</li>
+			</ul>
+		</template>
+		<template v-else>
+			<ul>
+				<li @click="copyFilenameHandler">Copy File Name</li>
+				<li @click="selectSameFolderHandler">Select All Files in this Folder</li>
+			</ul>
+		</template>
+	</div>
 </div>
 `,
 
@@ -179,6 +177,8 @@ const ResultsPage = {
 			showContextMenu       : false,
 			contextMenuClusterArg : -1,
 			contextMenuFileArg    : -1,
+			x                     : 0,
+			y                     : 0,
 		}
 	},
 
@@ -299,67 +299,20 @@ const ResultsPage = {
 			}
 		},
 
-		thumbnailRightClickHandler(x, y, clusterID, fileIndex) {
+		thumbnailRightClickHandler(event, clusterID, fileIndex) {
 			this.contextMenuClusterArg = clusterID;
 			this.contextMenuFileArg = fileIndex;
+			this.x = event.clientX;
+			this.y = event.clientY;
 			this.showContextMenu = true;
-
-			this.$nextTick(() => {
-				const contextMenu = this.$refs.contextMenu;
-				const menuWidth = contextMenu.offsetWidth;
-				const menuHeight = contextMenu.offsetHeight;
-				const windowWidth = window.innerWidth;
-				const windowHeight = window.innerHeight;
-
-				if ((x + menuWidth) > windowWidth) {
-					contextMenu.style.left = `${windowWidth - menuWidth}px`;
-				} else {
-					contextMenu.style.left = `${x}px`;
-				}
-
-				if ((y + menuHeight) > windowHeight) {
-					contextMenu.style.top = `${windowHeight - menuHeight}px`;
-				} else {
-					contextMenu.style.top = `${y}px`;
-				}
-
-				contextMenu.focus();
-			});
 		},
 
 		contextmenuHandler(event) {
 			event.preventDefault();
 			event.stopPropagation();
+			this.x = event.clientX;
+			this.y = event.clientY;
 			this.showContextMenu = true;
-			const [x, y] = [event.clientX, event.clientY];
-
-			this.$nextTick(() => {
-				const contextMenu = this.$refs.contextMenu;
-				const menuWidth = contextMenu.offsetWidth;
-				const menuHeight = contextMenu.offsetHeight;
-				const windowWidth = window.innerWidth;
-				const windowHeight = window.innerHeight;
-
-				if ((x + menuWidth) > windowWidth) {
-					contextMenu.style.left = `${windowWidth - menuWidth}px`;
-				} else {
-					contextMenu.style.left = `${x}px`;
-				}
-
-				if ((y + menuHeight) > windowHeight) {
-					contextMenu.style.top = `${windowHeight - menuHeight}px`;
-				} else {
-					contextMenu.style.top = `${y}px`;
-				}
-
-				contextMenu.focus();
-			});
-		},
-
-		contextMenuFocusoutHandler(event) {
-			this.contextMenuClusterArg = -1;
-			this.contextMenuFileArg = -1;
-			this.showContextMenu = false;
 		},
 
 		copyFilenameHandler() {
@@ -384,8 +337,8 @@ const ResultsPage = {
 
 		keyDownHandler(event) {
 			if (event.key === "Escape") {
-				if (this.contextMenuClusterArg != -1) {
-					this.$refs.contextMenu.blur();
+				if (this.showContextMenu) {
+					this.showContextMenu = false;
 				} else {
 					this.drawerOpen = false;
 				}
@@ -689,6 +642,36 @@ const ResultsPage = {
 
 		resultsText(msg) {
 			this.messageText = msg;
+		},
+
+		showContextMenu(newState) {
+			if (newState) {
+				this.$nextTick(() => {
+					const contextMenu = this.$refs.contextMenu;
+					const menuWidth = contextMenu.offsetWidth;
+					const menuHeight = contextMenu.offsetHeight;
+					const windowWidth = window.innerWidth;
+					const windowHeight = window.innerHeight;
+
+					if ((this.x + menuWidth) > windowWidth) {
+						contextMenu.style.left = `${windowWidth - menuWidth}px`;
+					} else {
+						contextMenu.style.left = `${this.x}px`;
+					}
+
+					if ((this.y + menuHeight) > windowHeight) {
+						contextMenu.style.top = `${windowHeight - menuHeight}px`;
+					} else {
+						contextMenu.style.top = `${this.y}px`;
+					}
+
+					contextMenu.focus();
+				});
+			} else {
+				this.$el.focus();
+				this.contextMenuClusterArg = -1;
+				this.contextMenuFileArg = -1;
+			}
 		},
 	}
 }
