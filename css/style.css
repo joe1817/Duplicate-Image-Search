@@ -731,13 +731,7 @@ u.filenameDiff {
 	background-repeat: repeat-y;
 }
 
-.textarea ul {
-	list-style: none;
-	padding: 0;
-	margin: 0;
-}
-
-.textarea li {
+.textarea .line {
 	color: #EEE;
 	position: relative;
 	margin-bottom: 8px;
@@ -745,13 +739,12 @@ u.filenameDiff {
 	line-break: anywhere;
 }
 
-.textarea li::selection {
+.textarea .line::selection {
 	color: white;
 	background-color: #F44;
 }
 
-/* Inject the unselectable dot */
-.textarea li::before {
+.textarea .line::before {
 	content: "—";
 	position: absolute;
 	left: -23px;

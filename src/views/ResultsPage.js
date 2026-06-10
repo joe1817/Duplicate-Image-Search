@@ -120,17 +120,11 @@ const ResultsPage = {
 			</div>
 		</div>
 
-		<div class="textarea no-scrollbar" ref="textarea">
-			<ul id="output-list">
-				<li v-for="(item, index) in textareaText" :key="index">
-					<template v-if="item === ''">
-						<br />
-					</template>
-					<template v-else>
-						{{ item }}
-					</template>
-				</li>
-			</ul>
+		<div id="output-list" class="textarea no-scrollbar" ref="textarea">
+			<div v-for="(item, index) in textareaText" :key="index" class="line">
+				<template v-if="item === ''"><br></template>
+				<template v-else>{{item}}</template>
+			</div>
 		</div>
 
 	</div>
@@ -481,13 +475,13 @@ const ResultsPage = {
 		},
 
 		copyListToClipboard() {
-			const data = this.$refs.textarea.innerText;
+			const data = this.textareaText.join("\n");
 			this.copyToClipboard(data);
 		},
 
 		downloadList() {
 			const onWindows = navigator.userAgent.toLowerCase().includes("win");
-			const data = this.$refs.textarea.innerText;
+			const data = this.textareaText.join("\n");
 			const ext = this.scriptState ? (onWindows ? "bat" : "sh") : "txt";
 			const filename = `selected-duplicates-${this.formatDate(new Date())}.${ext}`;
 			const type = "text/plain";
